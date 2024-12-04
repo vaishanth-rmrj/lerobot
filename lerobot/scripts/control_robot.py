@@ -119,6 +119,8 @@ from lerobot.common.robot_devices.robots.utils import Robot
 from lerobot.common.robot_devices.utils import busy_wait, safe_disconnect
 from lerobot.common.utils.utils import init_hydra_config, init_logging, log_say, none_or_int
 
+import rerun as rr
+
 ########################################################################################
 # Control modes
 ########################################################################################
@@ -282,7 +284,8 @@ def record(
         # if multi_task:
         #     task = input("Enter your task description: ")
 
-        log_say(f"Recording episode {dataset.num_episodes}", play_sounds)
+        # log_say(f"Recording episode {dataset.num_episodes}", play_sounds)
+        log_say(f"Ready to record : Episode {dataset.num_episodes}", play_sounds)
         record_episode(
             dataset=dataset,
             robot=robot,
@@ -311,9 +314,11 @@ def record(
             events["exit_early"] = False
             dataset.clear_episode_buffer()
             continue
-
-        dataset.save_episode(task)
-        recorded_episodes += 1
+        
+        if events["record_success"]:
+            dataset.save_episode(task)
+            recorded_episodes += 1
+            events["record_success"] = False
 
         if events["stop_recording"]:
             break
@@ -375,7 +380,7 @@ if __name__ == "__main__":
     base_parser.add_argument(
         "--robot-path",
         type=str,
-        default="lerobot/configs/robot/koch.yaml",
+        default="lerobot/configs/robot/so100.yaml",
         help="Path to robot yaml file used to instantiate the robot using `make_robot` factory function.",
     )
     base_parser.add_argument(
@@ -546,6 +551,10 @@ if __name__ == "__main__":
 
     init_logging()
 
+    # init rerun
+    rr.init("data_feed_viz")
+    rr.serve_web(open_browser=False)
+
     control_mode = args.mode
     robot_path = args.robot_path
     robot_overrides = args.robot_overrides
@@ -573,3 +582,5 @@ if __name__ == "__main__":
         # Disconnect manually to avoid a "Core dump" during process
         # termination due to camera threads not properly exiting.
         robot.disconnect()
+    
+    rr.disconnect()

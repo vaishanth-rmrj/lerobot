@@ -25,6 +25,8 @@ from lerobot.common.robot_devices.utils import busy_wait
 from lerobot.common.utils.utils import get_safe_torch_device, init_hydra_config, set_global_seed
 from lerobot.scripts.eval import get_pretrained_policy_path
 
+import rerun as rr
+
 
 def log_control_info(robot: Robot, dt_s, episode_index=None, frame_index=None, fps=None):
     log_items = []
@@ -128,6 +130,8 @@ def init_keyboard_listener():
     events["exit_early"] = False
     events["rerecord_episode"] = False
     events["stop_recording"] = False
+    events["start_recording"] = False
+    events["record_success"] = False
 
     if is_headless():
         logging.warning(
@@ -144,14 +148,20 @@ def init_keyboard_listener():
             if key == keyboard.Key.right:
                 print("Right arrow key pressed. Exiting loop...")
                 events["exit_early"] = True
+                events["start_recording"] = False
             elif key == keyboard.Key.left:
                 print("Left arrow key pressed. Exiting loop and rerecord the last episode...")
                 events["rerecord_episode"] = True
                 events["exit_early"] = True
+                events["start_recording"] = False
             elif key == keyboard.Key.esc:
                 print("Escape key pressed. Stopping data recording...")
                 events["stop_recording"] = True
+                events["start_recording"] = False
                 events["exit_early"] = True
+            elif key.char == "r":
+                print("Started recording")
+                events["start_recording"] = True
         except Exception as e:
             print(f"Error handling key press: {e}")
 
@@ -196,6 +206,7 @@ def warmup_record(
         events=events,
         fps=fps,
         teleoperate=enable_teloperation,
+        is_warmup=True,
     )
 
 
@@ -236,6 +247,7 @@ def control_loop(
     device=None,
     use_amp=None,
     fps=None,
+    is_warmup=False,
 ):
     # TODO(rcadene): Add option to record logs
     if not robot.is_connected:
@@ -270,27 +282,33 @@ def control_loop(
                 action = robot.send_action(pred_action)
                 action = {"action": action}
 
-        if dataset is not None:
+        if (dataset is not None and events["start_recording"]) or policy is not None:
             frame = {**observation, **action}
             dataset.add_frame(frame)
 
         if display_cameras and not is_headless():
             image_keys = [key for key in observation if "image" in key]
             for key in image_keys:
-                cv2.imshow(key, cv2.cvtColor(observation[key].numpy(), cv2.COLOR_RGB2BGR))
-            cv2.waitKey(1)
+                rr.log("/camera/rgb", rr.Image(observation[key].numpy()).compress(jpeg_quality=50), static=True)
+            #     cv2.imshow(key, cv2.cvtColor(observation[key].numpy(), cv2.COLOR_RGB2BGR))
+            # cv2.waitKey(1)
 
         if fps is not None:
             dt_s = time.perf_counter() - start_loop_t
             busy_wait(1 / fps - dt_s)
 
         dt_s = time.perf_counter() - start_loop_t
-        log_control_info(robot, dt_s, fps=fps)
+        # log_control_info(robot, dt_s, fps=fps)
 
         timestamp = time.perf_counter() - start_episode_t
         if events["exit_early"]:
             events["exit_early"] = False
+            if not events["rerecord_episode"]:
+                events["record_success"] = True
             break
+    
+    if not is_warmup:
+        events["record_success"] = True
 
 
 def reset_environment(robot, events, reset_time_s):
@@ -310,6 +328,7 @@ def reset_environment(robot, events, reset_time_s):
             pbar.update(1)
             if events["exit_early"]:
                 events["exit_early"] = False
+                events["start_recording"] = False
                 break
 
 
