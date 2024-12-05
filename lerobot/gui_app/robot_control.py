@@ -2,6 +2,8 @@ import cv2
 import time
 import threading
 
+from omegaconf.dictconfig import DictConfig
+
 # project imports
 from lerobot.common.robot_devices.control_utils import init_keyboard_listener, busy_wait 
 from lerobot.common.utils.utils import init_hydra_config
@@ -85,20 +87,18 @@ class RobotControl:
                 self.events["exit_early"] = False
                 break
     
-    def teleop(self):
+    def teleop(self, config):
         self.control_loop(
             self.robot,
-            control_time_s=None,
-            fps=30,
+            fps=config.fps,
             teleoperate=True,
-            display_cameras=False,
             events=self.events,
         )
     
-    def select_robot_control_mode(self, mode:str):
+    def select_robot_control_mode(self, mode:str, config: DictConfig):
 
         if mode == "teleop":
-            threading.Thread(target=self.teleop, daemon=True).start()
+            threading.Thread(target=self.teleop, daemon=True, args=[config.teleop]).start()
     
     def stop(self):
         self.events["exit_early"] = True
