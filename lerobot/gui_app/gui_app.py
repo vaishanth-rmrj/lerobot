@@ -14,41 +14,6 @@ from robot_control import RobotControl
 
 SHUTDOWN_APP = False
 
-global_config = {
-    "robot_cfg_file": "lerobot/configs/robot/koch.yaml",
-}
-teleop_config = {
-    "fps": 30
-}
-record_config = {
-    "fps": 30,
-    "root": "data/",
-    "repo_id": "default/custom_task",
-    "local_files_only": False,
-    "warmup_time_s": 10,
-    "episode_time_s": 40,
-    "reset_time_s": 10,
-    "num_episodes": 50,
-    "run_compute_stats": True,
-    "push_to_hub": False,
-    "tags": "",
-    "num_image_writer_processes": 0,
-    "num_image_writer_threads_per_camera": 4,
-    "resume": False,
-    "pretrained_policy_name_or_path": "",
-    "policy_overrides": "",
-}
-replay_config = {
-    "fps": 30,
-    "root": "data/",
-    "repo_id": "default/custom_task",
-    "local_files_only": False,
-    "episode": 50,
-}
-calibrate_config = {
-    "arms": ""
-}
-
 app = FastAPI()
 app.mount(
     "/static", 
