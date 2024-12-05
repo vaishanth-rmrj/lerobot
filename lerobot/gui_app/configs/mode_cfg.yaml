@@ -1,7 +1,11 @@
 robot_cfg_file: lerobot/configs/robot/koch.yaml         # Path to robot yaml file used to instantiate the robot using `make_robot` factory function.
-fps: 30                                                 # Frames per second (set to None to disable)
+
+
+teleop:
+  fps: 30                                               # Frames per second (set to None to disable)
 
 record: 
+  fps: 30                                               # Frames per second (set to None to disable)
   resume: False                                         # Resume recording on an existing dataset.
   root: data/                                           # Root directory where the dataset will be stored (e.g. 'dataset/path').
   repo_id: default/dataset                              # Dataset identifier. By convention it should match '{hf_username}/{dataset_name}' (e.g. `lerobot/test`).
@@ -20,6 +24,7 @@ record:
   single-task: ""                                       # A short but accurate description of the task performed during the recording.
 
 replay:
+  fps: 30                                               # Frames per second (set to None to disable)
   root: data/                                           # Root directory where the dataset will be stored (e.g. 'dataset/path').
   repo_id: default/dataset                              # Dataset identifier. By convention it should match '{hf_username}/{dataset_name}' (e.g. `lerobot/test`).
   local_files_only: False                               # Use local files only. By default, this script will try to fetch the dataset from the hub if it exists.
