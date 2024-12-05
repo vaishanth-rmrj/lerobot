@@ -1,4 +1,4 @@
-robot_cfg_file: lerobot/configs/robot/koch.yaml         # Path to robot yaml file used to instantiate the robot using `make_robot` factory function.
+robot_cfg_file: lerobot/configs/robot/so100.yaml         # Path to robot yaml file used to instantiate the robot using `make_robot` factory function.
 
 
 teleop:

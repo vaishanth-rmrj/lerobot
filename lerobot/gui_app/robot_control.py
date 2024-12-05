@@ -1,6 +1,7 @@
 import cv2
 import time
 import threading
+import logging
 
 from omegaconf.dictconfig import DictConfig
 
@@ -14,19 +15,41 @@ from lerobot.common.datasets.image_writer import safe_stop_image_writer
 class RobotControl:
     def __init__(
             self,
-            robot_path="lerobot/configs/robot/so100.yaml"
+            config: DictConfig
         ) -> None:
 
-        self.name = "so100_arm"
+        self.config = config
         self.is_shutdown = False
-        self.counter = 0
-        self.cam_image = None
         self.cam_buffer = None
 
+        self.is_process_active = False
 
-        robot_cfg = init_hydra_config(robot_path, None)
-        self.robot = make_robot(robot_cfg)
-        self.listener, self.events = init_keyboard_listener()    
+        self.listener, self.events = init_keyboard_listener()          
+        self.robot = self.init_robot(self.config.robot_cfg_file)          
+
+        
+    
+    def init_robot(self, config_path: str):
+        self.stop_all_processes()
+
+        logging.info(f"Provided robot config file: {config_path}")
+        robot_cfg = init_hydra_config(config_path)
+        if hasattr(self, 'robot'):
+            self.robot.__del__()
+        robot = make_robot(robot_cfg)
+        return robot
+    
+    def stop_all_processes(self):
+        if self.is_process_active:
+            logging.info("Stopping all processes")
+            self.events["exit_early"] = True
+            time.sleep(1)
+            self.is_process_active = False
+        else:
+            logging.info("No background processes running !!")
+    
+    def stop(self):
+        self.stop_all_processes()
     
     @safe_stop_image_writer
     def control_loop(
@@ -60,7 +83,9 @@ class RobotControl:
 
         timestamp = 0
         start_episode_t = time.perf_counter()
+        logging.info("Starting control loop...")
         while timestamp < control_time_s:
+            logging.info("Running control loop")
             start_loop_t = time.perf_counter()
 
             # logic comes here
@@ -72,8 +97,8 @@ class RobotControl:
             # if display_cameras and not is_headless():
             image_keys = [key for key in observation if "image" in key]
             for key in image_keys:            
-                self.cam_image = cv2.cvtColor(observation[key].numpy(), cv2.COLOR_RGB2BGR)
-                ret, self.cam_buffer = cv2.imencode('.jpg', self.cam_image)
+                cam_image = cv2.cvtColor(observation[key].numpy(), cv2.COLOR_RGB2BGR)
+                ret, self.cam_buffer = cv2.imencode('.jpg', cam_image)
 
             if fps is not None:
                 dt_s = time.perf_counter() - start_loop_t
@@ -83,25 +108,33 @@ class RobotControl:
 
             timestamp = time.perf_counter() - start_episode_t
             if self.events["exit_early"]:
-                print("Exiting while loop")
+                logging.info("Early exit triggered. Exiting while loop !!")
                 self.events["exit_early"] = False
                 break
     
     def teleop(self, config):
-        self.control_loop(
-            self.robot,
-            fps=config.fps,
-            teleoperate=True,
-            events=self.events,
-        )
+
+        if not self.is_process_active:
+            self.is_process_active = True
+            logging.info("Started teleop control XD")
+            self.control_loop(
+                self.robot,
+                fps=config.fps,
+                teleoperate=True,
+                events=self.events,
+            )
+        
+        else:
+            logging.info("Background threads running. Please stop other threads / processes !!")
+            return
     
-    def select_robot_control_mode(self, mode:str, config: DictConfig):
+    def select_robot_control_mode(self, mode:str):
 
         if mode == "teleop":
-            threading.Thread(target=self.teleop, daemon=True, args=[config.teleop]).start()
+            logging.info(f"Provided robot config file: {self.config.robot_cfg_file}")
+            threading.Thread(target=self.teleop, daemon=True, args=[self.config.teleop]).start()
     
-    def stop(self):
-        self.events["exit_early"] = True
+    
     
     def __del__(self):
         self.robot.disconnect()
