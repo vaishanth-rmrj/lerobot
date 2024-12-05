@@ -20,7 +20,6 @@ global_config = {
 teleop_config = {
     "fps": 30
 }
-
 record_config = {
     "fps": 30,
     "root": "data/",
@@ -39,7 +38,6 @@ record_config = {
     "pretrained_policy_name_or_path": "",
     "policy_overrides": "",
 }
-
 replay_config = {
     "fps": 30,
     "root": "data/",
@@ -47,7 +45,6 @@ replay_config = {
     "local_files_only": False,
     "episode": 50,
 }
-
 calibrate_config = {
     "arms": ""
 }
