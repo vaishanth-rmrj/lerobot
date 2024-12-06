@@ -21,7 +21,7 @@ record:
   num_image_writer_threads_per_camera: 4                # Number of threads writing the frames as png images on disk, per camera. Too many threads might cause unstable teleoperation fps due to main thread being blocked. Not enough threads might cause low camera fps.
   pretrained_policy_name_or_path: ""                    # Either the repo ID of a model hosted on the Hub or a path to a directory containing weights saved using `Policy.save_pretrained`.
   policy_overrides: ""
-  single-task: ""                                       # A short but accurate description of the task performed during the recording.
+  single_task: "default task"                           # A short but accurate description of the task performed during the recording.
 
 replay:
   fps: 30                                               # Frames per second (set to None to disable)

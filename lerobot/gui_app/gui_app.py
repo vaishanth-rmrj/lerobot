@@ -54,15 +54,26 @@ app.mount(
 
 @app.get("/select_mode/{mode}")
 async def select_control_mode(mode: str):
-    print(f"Triggering mode : {mode}")
-    robot_controller.select_robot_control_mode(mode)
-    return {"status": "success"}
+    print(f"app : Triggering {mode} mode")
+
+    active_threads = len(robot_controller.running_threads)
+    if active_threads > 0:
+        logging.info(f"app : {active_threads} background threads running. Stop the threads before proceding !!")
+        return {"status": "fail"}
+    
+    success = robot_controller.select_robot_control_mode(mode)
+    if success:        
+        return {"status": "success"}
+    else:
+        return {"status": "fail"}
 
 @app.get("/stop")
 async def stop_robot():
-    print(f"Stopping robot")
-    robot_controller.stop()
-    return {"status": "success"}
+    success = robot_controller.stop_threads()
+    if success:        
+        return {"status": "success"}
+    else:
+        return {"status": "fail"}
 
 @app.post("/telop/config-update")
 async def update_teleop_config(robot_config: str = Form(...), fps: int = Form(...)):
@@ -118,11 +129,11 @@ async def update_record_config(
     if not robot_controller.config.robot_cfg_file == robot_config:
         logging.info("Robot configuration changed")
         robot_controller.config.robot_cfg_file = robot_config
-        robot_controller.stop_all_processes()
+        robot_controller.stop_threads()
         robot_controller.init_robot(robot_config)
 
     if len(diff.keys()) > 0:
-        robot_controller.stop_all_processes()
+        robot_controller.stop_threads()
         logging.info(f"Modified Configs: {diff}")
         robot_controller.config.record = OmegaConf.create(new_record_config)
         logging.info(f"Updated Configs: {robot_controller.config.record}")
@@ -154,7 +165,7 @@ def handle_interrupt(signum, frame):
     global SHUTDOWN_APP    
     logging.info("Interrupt received, terminating app !!")
     SHUTDOWN_APP = True
-    robot_controller.stop()
+    robot_controller.stop_threads()
 
 if __name__ == "__main__":
     import uvicorn
@@ -163,16 +174,7 @@ if __name__ == "__main__":
     app_cfg = init_hydra_config(DEFAULT_APP_CONFIG_PATH)
 
     # init logging and capture the custom list handler
-    log_list_handler = init_logging()
-
-    # Example logging
-    logging.info("Initializing the system.")
-    logging.info("Processing data.")
-    logging.error("An error occurred!")
-
-    # Access logs from the list
-    # print("Logs stored in the list:")
-    
+    log_list_handler = init_logging()    
     
     robot_controller = RobotControl(
         config=app_cfg

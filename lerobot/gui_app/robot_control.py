@@ -2,6 +2,8 @@ import cv2
 import time
 import threading
 import logging
+from pathlib import Path
+from typing import List
 
 from omegaconf.dictconfig import DictConfig
 
@@ -11,6 +13,20 @@ from lerobot.common.utils.utils import init_hydra_config
 from lerobot.common.robot_devices.robots.factory import make_robot
 from lerobot.common.datasets.lerobot_dataset import LeRobotDataset
 from lerobot.common.datasets.image_writer import safe_stop_image_writer
+from lerobot.common.robot_devices.robots.utils import Robot
+from lerobot.common.robot_devices.control_utils import (
+    control_loop,
+    has_method,
+    init_keyboard_listener,
+    init_policy,
+    log_control_info,
+    record_episode,
+    reset_environment,
+    sanity_check_dataset_name,
+    sanity_check_dataset_robot_compatibility,
+    stop_recording,
+    warmup_record,
+)
 
 class RobotControl:
     def __init__(
@@ -23,33 +39,29 @@ class RobotControl:
         self.cam_buffer = None
 
         self.is_process_active = False
+        self.running_threads = {}
 
-        self.listener, self.events = init_keyboard_listener()          
-        self.robot = self.init_robot(self.config.robot_cfg_file)          
+        self.listener, self.events = init_keyboard_listener()  
+        if self.events is not None:
+            # add additional event flags
+            self.events["force_stop"] = False
 
-        
+        self.robot = self.init_robot(self.config.robot_cfg_file)      
     
     def init_robot(self, config_path: str):
-        self.stop_all_processes()
-
         logging.info(f"Provided robot config file: {config_path}")
         robot_cfg = init_hydra_config(config_path)
         if hasattr(self, 'robot'):
             self.robot.__del__()
         robot = make_robot(robot_cfg)
         return robot
-    
-    def stop_all_processes(self):
-        if self.is_process_active:
-            logging.info("Stopping all processes")
-            self.events["exit_early"] = True
-            time.sleep(1)
-            self.is_process_active = False
+        
+    def check_force_stop(self, events):
+        if events["force_stop"]:
+            logging.info("Force Stop Triggered !!")            
+            return True
         else:
-            logging.info("No background processes running !!")
-    
-    def stop(self):
-        self.stop_all_processes()
+            return False
     
     @safe_stop_image_writer
     def control_loop(
@@ -85,7 +97,7 @@ class RobotControl:
         start_episode_t = time.perf_counter()
         logging.info("Starting control loop...")
         while timestamp < control_time_s:
-            logging.info("Running control loop")
+            # logging.info("Running control loop")
             start_loop_t = time.perf_counter()
 
             # logic comes here
@@ -107,36 +119,260 @@ class RobotControl:
             dt_s = time.perf_counter() - start_loop_t
 
             timestamp = time.perf_counter() - start_episode_t
-            if self.events["exit_early"]:
+            if events["exit_early"]:
                 logging.info("Early exit triggered. Exiting while loop !!")
-                self.events["exit_early"] = False
+                events["exit_early"] = False
                 break
-    
-    def teleop(self, config):
+            
+            if self.check_force_stop(events): return
+                
 
-        if not self.is_process_active:
-            self.is_process_active = True
-            logging.info("Started teleop control XD")
-            self.control_loop(
-                self.robot,
-                fps=config.fps,
-                teleoperate=True,
-                events=self.events,
-            )
+    def record(
+        self,
+        robot: Robot,
+        root: Path,
+        repo_id: str,
+        single_task: str,
+        pretrained_policy_name_or_path: str | None = None,
+        policy_overrides: List[str] | None = None,
+        fps: int | None = None,
+        warmup_time_s: int | float = 2,
+        episode_time_s: int | float = 10,
+        reset_time_s: int | float = 5,
+        num_episodes: int = 50,
+        video: bool = True,
+        run_compute_stats: bool = True,
+        push_to_hub: bool = True,
+        tags: list[str] | None = None,
+        num_image_writer_processes: int = 0,
+        num_image_writer_threads_per_camera: int = 4,
+        display_cameras: bool = False,
+        play_sounds: bool = True,
+        resume: bool = False,
+        local_files_only: bool = False,
+        events = None,
+    ):
         
+        listener = self.listener
+        events = events
+        policy = None
+        device = None
+        use_amp = None
+
+        if single_task:
+            task = single_task
         else:
-            logging.info("Background threads running. Please stop other threads / processes !!")
-            return
+            raise NotImplementedError("Only single-task recording is supported for now")
+
+        # TODO: Intergrate later 
+        # Load pretrained policy
+        # if pretrained_policy_name_or_path is not None:
+        #     policy, policy_fps, device, use_amp = init_policy(pretrained_policy_name_or_path, policy_overrides)
+
+        #     if fps is None:
+        #         fps = policy_fps
+        #         logging.warning(f"No fps provided, so using the fps from policy config ({policy_fps}).")
+        #     elif fps != policy_fps:
+        #         logging.warning(
+        #             f"There is a mismatch between the provided fps ({fps}) and the one from policy config ({policy_fps})."
+        #         )
+
+        # if resume:
+        #     dataset = LeRobotDataset(
+        #         repo_id,
+        #         root=root,
+        #         local_files_only=local_files_only,
+        #     )
+        #     dataset.start_image_writer(
+        #         num_processes=num_image_writer_processes,
+        #         num_threads=num_image_writer_threads_per_camera * len(robot.cameras),
+        #     )
+        #     sanity_check_dataset_robot_compatibility(dataset, robot, fps, video)
+        # else:
+        #     # Create empty dataset or load existing saved episodes
+        #     sanity_check_dataset_name(repo_id, policy)
+        #     dataset = LeRobotDataset.create(
+        #         repo_id,
+        #         fps,
+        #         root=root,
+        #         robot=robot,
+        #         use_videos=video,
+        #         image_writer_processes=num_image_writer_processes,
+        #         image_writer_threads=num_image_writer_threads_per_camera * len(robot.cameras),
+        #     )
+
+        if not robot.is_connected:
+            robot.connect()
+
+        enable_teleoperation = policy is None
+        logging.info("Warmup record")
+        self.control_loop(
+            robot=robot,
+            control_time_s=warmup_time_s,
+            events=events,
+            fps=fps,
+            teleoperate=enable_teleoperation,
+        )
+
+        # if has_method(robot, "teleop_safety_stop"):
+        #     robot.teleop_safety_stop()
+
+        recorded_episodes = 0
+        while True:
+            if recorded_episodes >= num_episodes:
+                break
+
+            
+
+            # logging.info(f"Recording episode {dataset.num_episodes}")
+            logging.info(f"Recording episode {recorded_episodes}")
+            # record_episode(
+            #     dataset=dataset,
+            #     robot=robot,
+            #     events=events,
+            #     episode_time_s=episode_time_s,
+            #     display_cameras=display_cameras,
+            #     policy=policy,
+            #     device=device,
+            #     use_amp=use_amp,
+            #     fps=fps,
+            # )
+
+            self.control_loop(
+                robot=robot,
+                control_time_s=episode_time_s,
+                dataset=None,
+                events=events,
+                policy=policy,
+                device=device,
+                use_amp=use_amp,
+                fps=fps,
+                teleoperate=policy is None,
+            )
+
+            if self.check_force_stop(events): return
+
+            # Execute a few seconds without recording to give time to manually reset the environment
+            # Current code logic doesn't allow to teleoperate during this time.
+            # TODO(rcadene): add an option to enable teleoperation during reset
+            # Skip reset for the last episode to be recorded
+            # if not events["stop_recording"] and (
+            #     (dataset.num_episodes < num_episodes - 1) or events["rerecord_episode"]
+            # ):
+            #     log_say("Reset the environment", play_sounds)
+            #     reset_environment(robot, events, reset_time_s)
+
+            # if events["rerecord_episode"]:
+            #     log_say("Re-record episode", play_sounds)
+            #     events["rerecord_episode"] = False
+            #     events["exit_early"] = False
+            #     dataset.clear_episode_buffer()
+            #     continue
+
+            # dataset.save_episode(task)
+            recorded_episodes += 1
+
+            if events["stop_recording"]:
+                break
+
+            if self.check_force_stop(events): return
+        
+        logging.info("Stop recording")
+        stop_recording(robot, listener, display_cameras=False)
+
+        if run_compute_stats:
+            logging.info("Computing dataset statistics")
+
+        # dataset.consolidate(run_compute_stats)
+
+        # if push_to_hub:
+        #     dataset.push_to_hub(tags=tags)
+
+        logging.info("Exiting")
+    
+    def run_teleop(self, config):
+
+        logging.info("Started teleop control XD")
+        self.control_loop(
+            self.robot,
+            fps=config.fps,
+            teleoperate=True,
+            events=self.events,
+        )   
+        self.events["force_stop"] = False
+        
+    def run_record(self, config: DictConfig):
+
+        logging.info("Started record control XD")
+        self.record(
+            robot = self.robot,
+            root = config.root,
+            repo_id = config.repo_id,
+            single_task = config.single_task,
+            pretrained_policy_name_or_path = config.pretrained_policy_name_or_path,
+            fps = config.fps,
+            warmup_time_s = config.warmup_time_s,
+            episode_time_s = config.episode_time_s,
+            reset_time_s = config.reset_time_s,
+            num_episodes = config.num_episodes,
+            video = True,
+            run_compute_stats = config.run_compute_stats,
+            push_to_hub = config.push_to_hub,
+            tags = config.tags,
+            num_image_writer_processes = config.num_image_writer_processes,
+            num_image_writer_threads_per_camera = config.num_image_writer_threads_per_camera,
+            display_cameras = False,
+            play_sounds = False,
+            resume = config.resume,
+            local_files_only = config.local_files_only,
+            events=self.events,
+        )
+        self.events["force_stop"] = False
     
     def select_robot_control_mode(self, mode:str):
 
+        if len(self.running_threads) > 0:
+            logging.info("select_robot_control_mode : Background threads running. Please stop other threads / processes !!")
+            return False
+
         if mode == "teleop":
-            logging.info(f"Provided robot config file: {self.config.robot_cfg_file}")
-            threading.Thread(target=self.teleop, daemon=True, args=[self.config.teleop]).start()
-    
+            thread = threading.Thread(
+                target=self.run_teleop,                  
+                args=[self.config.teleop],
+                daemon=True,
+            )
+        elif mode == "record":
+            thread = threading.Thread(
+                target=self.run_record, 
+                daemon=True, 
+                args=[self.config.record]
+            )        
+
+        # start the thread and store it
+        self.running_threads[mode] = thread
+        thread.start()
+        return True
+
+    def stop_threads(self):
+        
+        active_threads = len(self.running_threads)
+        if active_threads > 0:
+            logging.info(f"stop_threads : {active_threads} background threads running. Terminating all threads !!")
+
+            for thread_id in list(self.running_threads.keys()):
+                self.events["force_stop"] = True
+                # time.sleep(1)
+                self.running_threads[thread_id].join()
+                del self.running_threads[thread_id]
+                logging.info(f"{thread_id} background thread was stopped. XD")
+        else:
+            logging.info(f"stop_threads : No background threads running. XD")
+        
+        return True if len(self.running_threads) > 0 else False
     
     
     def __del__(self):
-        self.robot.disconnect()
+        if self.robot.is_connected:
+            self.robot.disconnect()
 
 
