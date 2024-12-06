@@ -153,7 +153,7 @@
 
                                     <button class="btn btn-success" id="startRecordBtn"><i class="bi bi-record-fill"></i> Record</button>                                    
                                     <button class="btn btn-primary" id="finishRecordBtn"><i class="bi bi-save-fill "></i> Finish</button>
-                                    <button class="btn btn-danger" id="stopRecordBtn"><i class="bi bi-trash3-fill"></i> Cancel</button>
+                                    <button class="btn btn-danger" id="cancelRecordBtn"><i class="bi bi-trash3-fill"></i> Cancel</button>
 
                                   </div>
 
@@ -216,6 +216,15 @@
                                         </div>
                                         <div class="col-auto">
                                           <input type="text" id="recordTags" name="tags" class="form-control" aria-describedby="recordHelpline" value="">
+                                        </div>
+                                      </div>
+
+                                      <div class="row g-3 align-items-center mb-3">
+                                        <div class="col-auto">
+                                          <label for="recordSingleTask" class="col-form-label">Single Task Desc</label>
+                                        </div>
+                                        <div class="col-auto">
+                                          <input type="text" id="recordSingleTask" name="single_task" class="form-control" aria-describedby="recordHelpline" value="">
                                         </div>
                                       </div>
 
@@ -436,6 +445,37 @@
                 console.error("Error stopping teleoperation:", error);
               }
             });
+          
+          // start editing here
+          document
+            .getElementById("startRecordBtn")
+            .addEventListener("click", async () => {
+              try {
+                await fetch("/record/start_recording", { method: "GET" });
+              } catch (error) {
+                console.error("Error starting recording:", error);
+              }
+            });
+          
+          document
+            .getElementById("finishRecordBtn")
+            .addEventListener("click", async () => {
+              try {
+                await fetch("/record/finish_recording", { method: "GET" });
+              } catch (error) {
+                console.error("Error finishing recording:", error);
+              }
+            });
+          
+          document
+            .getElementById("cancelRecordBtn")
+            .addEventListener("click", async () => {
+              try {
+                await fetch("/record/cancel_recording", { method: "GET" });
+              } catch (error) {
+                console.error("Error cancelling recording:", error);
+              }
+            });
 
             const teleopConfigForm = document.getElementById('teleopConfigForm');
             teleopConfigForm.addEventListener('submit', async (event) => {
@@ -469,6 +509,43 @@
                     alert('Error updating configuration!');
                 }
             });
+
+            document.addEventListener("DOMContentLoaded", async () => {
+            const form = document.getElementById("recordConfigForm");
+
+            try {
+                // Fetch data from the backend
+                const response = await fetch("/record/get-config");
+                const data = await response.json();
+
+                // Map backend data to form fields
+                form.robotConfigSelect.value = data.robot_config;
+                form.recordRoot.value = data.root;
+                form.recordRepoID.value = data.repo_id;
+                form.recordTags.value = data.tags;
+                form.recordFPS.value = data.fps;
+
+                // Handle switches
+                form.resumeRecordToggle.checked = data.resume;
+                form.recordLocalFilesToggle.checked = data.local_files_only;
+                form.recordRunComputeStats.checked = data.run_compute_stats;
+                form.recordPushToHub.checked = data.push_to_hub;
+
+                // Handle time and episode inputs
+                form.recordWarmupTime.value = data.warmup_time_s;
+                form.recordEpisodeTime.value = data.episode_time_s;
+                form.recordResetTime.value = data.reset_time_s;
+                form.recordNumEpisodes.value = data.num_episodes;
+
+                // Handle image writer settings
+                form.recordImageWriterProcesses.value = data.num_image_writer_processes;
+                form.recordImageWriterThreads.value = data.num_image_writer_threads_per_camera;
+                form.recordSingleTask.value = data.single_task;
+
+            } catch (error) {
+                console.error("Error fetching configuration data:", error);
+            }
+        });
 
             function startStreaming() {
               const eventSource = new EventSource("/stream");

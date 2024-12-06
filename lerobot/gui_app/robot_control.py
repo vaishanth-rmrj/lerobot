@@ -26,6 +26,7 @@ from lerobot.common.robot_devices.control_utils import (
     sanity_check_dataset_robot_compatibility,
     stop_recording,
     warmup_record,
+    predict_action,
 )
 
 class RobotControl:
@@ -36,7 +37,7 @@ class RobotControl:
 
         self.config = config
         self.is_shutdown = False
-        self.cam_buffer = None
+        self.cams_image_buffer = {}
 
         self.is_process_active = False
         self.running_threads = {}
@@ -45,6 +46,7 @@ class RobotControl:
         if self.events is not None:
             # add additional event flags
             self.events["force_stop"] = False
+            self.events["start_recording"] = False
 
         self.robot = self.init_robot(self.config.robot_cfg_file)      
     
@@ -55,6 +57,10 @@ class RobotControl:
             self.robot.__del__()
         robot = make_robot(robot_cfg)
         return robot
+    
+    @property
+    def num_cameras(self):
+        return self.robot.cameras
         
     def check_force_stop(self, events):
         if events["force_stop"]:
@@ -76,7 +82,7 @@ class RobotControl:
             device=None,
             use_amp=None,
             fps=None,
-        ):
+        ) -> None:
 
         if not robot.is_connected:
             robot.connect()
@@ -95,28 +101,40 @@ class RobotControl:
 
         timestamp = 0
         start_episode_t = time.perf_counter()
-        logging.info("Starting control loop...")
+        logging.info("Started control loop.")
         while timestamp < control_time_s:
-            # logging.info("Running control loop")
             start_loop_t = time.perf_counter()
 
-            # logic comes here
             if teleoperate:
                 observation, action = robot.teleop_step(record_data=True)
             else:
                 observation = robot.capture_observation()
+
+                if policy is not None:
+                    pred_action = predict_action(observation, policy, device, use_amp)
+                    # Action can eventually be clipped using `max_relative_target`,
+                    # so action actually sent is saved in the dataset.
+                    action = robot.send_action(pred_action)
+                    action = {"action": action}
             
-            # if display_cameras and not is_headless():
+            if dataset is not None and events["start_recording"]:
+                frame = {**observation, **action}
+                dataset.add_frame(frame)
+
             image_keys = [key for key in observation if "image" in key]
             for key in image_keys:            
                 cam_image = cv2.cvtColor(observation[key].numpy(), cv2.COLOR_RGB2BGR)
-                ret, self.cam_buffer = cv2.imencode('.jpg', cam_image)
+                ret, self.cams_image_buffer[key] = cv2.imencode('.jpg', cam_image)
+                if not ret:
+                    logging.info(f"Error encoding cam:{key} feed")
 
             if fps is not None:
                 dt_s = time.perf_counter() - start_loop_t
                 busy_wait(1 / fps - dt_s)
             
             dt_s = time.perf_counter() - start_loop_t
+            # TODO: update implementation for gui
+            # log_control_info(robot, dt_s, fps=fps)
 
             timestamp = time.perf_counter() - start_episode_t
             if events["exit_early"]:
@@ -164,7 +182,6 @@ class RobotControl:
         else:
             raise NotImplementedError("Only single-task recording is supported for now")
 
-        # TODO: Intergrate later 
         # Load pretrained policy
         # if pretrained_policy_name_or_path is not None:
         #     policy, policy_fps, device, use_amp = init_policy(pretrained_policy_name_or_path, policy_overrides)
@@ -177,29 +194,29 @@ class RobotControl:
         #             f"There is a mismatch between the provided fps ({fps}) and the one from policy config ({policy_fps})."
         #         )
 
-        # if resume:
-        #     dataset = LeRobotDataset(
-        #         repo_id,
-        #         root=root,
-        #         local_files_only=local_files_only,
-        #     )
-        #     dataset.start_image_writer(
-        #         num_processes=num_image_writer_processes,
-        #         num_threads=num_image_writer_threads_per_camera * len(robot.cameras),
-        #     )
-        #     sanity_check_dataset_robot_compatibility(dataset, robot, fps, video)
-        # else:
-        #     # Create empty dataset or load existing saved episodes
-        #     sanity_check_dataset_name(repo_id, policy)
-        #     dataset = LeRobotDataset.create(
-        #         repo_id,
-        #         fps,
-        #         root=root,
-        #         robot=robot,
-        #         use_videos=video,
-        #         image_writer_processes=num_image_writer_processes,
-        #         image_writer_threads=num_image_writer_threads_per_camera * len(robot.cameras),
-        #     )
+        if resume:
+            dataset = LeRobotDataset(
+                repo_id,
+                root=root,
+                local_files_only=local_files_only,
+            )
+            dataset.start_image_writer(
+                num_processes=num_image_writer_processes,
+                num_threads=num_image_writer_threads_per_camera * len(robot.cameras),
+            )
+            sanity_check_dataset_robot_compatibility(dataset, robot, fps, video)
+        else:
+            # Create empty dataset or load existing saved episodes
+            sanity_check_dataset_name(repo_id, policy)
+            dataset = LeRobotDataset.create(
+                repo_id,
+                fps,
+                root=root,
+                robot=robot,
+                use_videos=video,
+                image_writer_processes=num_image_writer_processes,
+                image_writer_threads=num_image_writer_threads_per_camera * len(robot.cameras),
+            )
 
         if not robot.is_connected:
             robot.connect()
@@ -214,34 +231,19 @@ class RobotControl:
             teleoperate=enable_teleoperation,
         )
 
-        # if has_method(robot, "teleop_safety_stop"):
-        #     robot.teleop_safety_stop()
+        if has_method(robot, "teleop_safety_stop"):
+            robot.teleop_safety_stop()
 
         recorded_episodes = 0
         while True:
             if recorded_episodes >= num_episodes:
-                break
+                break            
 
-            
-
-            # logging.info(f"Recording episode {dataset.num_episodes}")
-            logging.info(f"Recording episode {recorded_episodes}")
-            # record_episode(
-            #     dataset=dataset,
-            #     robot=robot,
-            #     events=events,
-            #     episode_time_s=episode_time_s,
-            #     display_cameras=display_cameras,
-            #     policy=policy,
-            #     device=device,
-            #     use_amp=use_amp,
-            #     fps=fps,
-            # )
-
+            logging.info(f"Ready to record episode {dataset.num_episodes}")
             self.control_loop(
+                dataset=dataset,
                 robot=robot,
-                control_time_s=episode_time_s,
-                dataset=None,
+                control_time_s=episode_time_s,                
                 events=events,
                 policy=policy,
                 device=device,
@@ -256,20 +258,20 @@ class RobotControl:
             # Current code logic doesn't allow to teleoperate during this time.
             # TODO(rcadene): add an option to enable teleoperation during reset
             # Skip reset for the last episode to be recorded
-            # if not events["stop_recording"] and (
-            #     (dataset.num_episodes < num_episodes - 1) or events["rerecord_episode"]
-            # ):
-            #     log_say("Reset the environment", play_sounds)
-            #     reset_environment(robot, events, reset_time_s)
+            if not events["stop_recording"] and (
+                (dataset.num_episodes < num_episodes - 1) or events["rerecord_episode"]
+            ):
+                logging.info("Reset the environment")
+                events["start_recording"] = False
 
-            # if events["rerecord_episode"]:
-            #     log_say("Re-record episode", play_sounds)
-            #     events["rerecord_episode"] = False
-            #     events["exit_early"] = False
-            #     dataset.clear_episode_buffer()
-            #     continue
+            if events["rerecord_episode"]:
+                logging.info("Re-record episode")
+                events["rerecord_episode"] = False
+                events["exit_early"] = False
+                dataset.clear_episode_buffer()
+                continue
 
-            # dataset.save_episode(task)
+            dataset.save_episode(task)
             recorded_episodes += 1
 
             if events["stop_recording"]:
@@ -282,11 +284,10 @@ class RobotControl:
 
         if run_compute_stats:
             logging.info("Computing dataset statistics")
+        dataset.consolidate(run_compute_stats)
 
-        # dataset.consolidate(run_compute_stats)
-
-        # if push_to_hub:
-        #     dataset.push_to_hub(tags=tags)
+        if push_to_hub:
+            dataset.push_to_hub(tags=tags)
 
         logging.info("Exiting")
     
@@ -309,7 +310,6 @@ class RobotControl:
             root = config.root,
             repo_id = config.repo_id,
             single_task = config.single_task,
-            pretrained_policy_name_or_path = config.pretrained_policy_name_or_path,
             fps = config.fps,
             warmup_time_s = config.warmup_time_s,
             episode_time_s = config.episode_time_s,
@@ -361,7 +361,6 @@ class RobotControl:
 
             for thread_id in list(self.running_threads.keys()):
                 self.events["force_stop"] = True
-                # time.sleep(1)
                 self.running_threads[thread_id].join()
                 del self.running_threads[thread_id]
                 logging.info(f"{thread_id} background thread was stopped. XD")

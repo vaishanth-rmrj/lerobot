@@ -78,15 +78,22 @@ async def stop_robot():
 @app.post("/telop/config-update")
 async def update_teleop_config(robot_config: str = Form(...), fps: int = Form(...)):
 
+    active_threads = len(robot_controller.running_threads)
     if not robot_controller.config.robot_cfg_file == robot_config:
         logging.info("Robot configuration changed")
         robot_controller.config.robot_cfg_file = robot_config
-        robot_controller.stop_all_processes()
+        if active_threads: robot_controller.stop_threads()
         robot_controller.init_robot(robot_config)
 
     if not robot_controller.config.teleop.fps == fps:
-        robot_controller.stop_all_processes()
+        if active_threads: robot_controller.stop_threads()
         robot_controller.config.teleop.fps = fps
+
+@app.get("/record/get-config")
+async def get_config():
+    record_dict_cfg = OmegaConf.to_container(robot_controller.config.record, resolve=True)
+    record_dict_cfg['robot_config'] = robot_controller.config.robot_cfg_file
+    return record_dict_cfg
 
 @app.post("/record/config-update")
 async def update_record_config(
@@ -105,6 +112,7 @@ async def update_record_config(
         num_episodes: int = Form(...),
         num_image_writer_processes: int = Form(...),
         num_image_writer_threads_per_camera: int = Form(...),
+        single_task: str = Form(...),
     ):
 
     new_record_config = {
@@ -122,22 +130,36 @@ async def update_record_config(
         "num_episodes": num_episodes,
         "num_image_writer_processes": num_image_writer_processes,
         "num_image_writer_threads_per_camera": num_image_writer_threads_per_camera,
+        "single_task": single_task,
     }
 
     diff = compare_configs(new_record_config, robot_controller.config.record)
+    active_threads = len(robot_controller.running_threads)
 
     if not robot_controller.config.robot_cfg_file == robot_config:
         logging.info("Robot configuration changed")
         robot_controller.config.robot_cfg_file = robot_config
-        robot_controller.stop_threads()
+        if active_threads: robot_controller.stop_threads()
         robot_controller.init_robot(robot_config)
 
     if len(diff.keys()) > 0:
-        robot_controller.stop_threads()
+        if active_threads: robot_controller.stop_threads()
         logging.info(f"Modified Configs: {diff}")
         robot_controller.config.record = OmegaConf.create(new_record_config)
         logging.info(f"Updated Configs: {robot_controller.config.record}")
 
+@app.get("/record/start_recording")
+async def start_recording():
+    robot_controller.events["start_recording"] = True
+
+@app.get("/record/cancel_recording")
+async def cancel_recording():
+    robot_controller.events["rerecord_episode"] = True
+    robot_controller.events["exit_early"] = True
+
+@app.get("/record/finish_recording")
+async def finish_recording():
+    robot_controller.events["exit_early"] = True
 
 # @app.get('/stream')
 # async def stream_output():
