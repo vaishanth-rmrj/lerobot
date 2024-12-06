@@ -1,6 +1,8 @@
 import logging
 from datetime import datetime
 
+from omegaconf import OmegaConf
+
 # Custom handler to store logs in a list
 class ListHandler(logging.Handler):
     def __init__(self):
@@ -43,3 +45,27 @@ def init_logging():
 
     # Return the list handler for later use
     return list_handler
+
+def compare_configs(dict_config, hydra_config):
+    """
+    Compare a plain dictionary with a Hydra config object and return changes.
+
+    Args:
+        dict_config (dict): The plain dictionary to compare.
+        hydra_config: The Hydra config object to compare.
+
+    Returns:
+        dict: A dictionary with differences found.
+    """
+    # Convert Hydra config to a plain dictionary
+    hydra_dict = OmegaConf.to_container(hydra_config, resolve=True)
+    
+    # Find differences
+    differences = {}
+    for key in set(dict_config.keys()).union(hydra_dict.keys()):
+        dict_value = dict_config.get(key, None)
+        hydra_value = hydra_dict.get(key, None)
+        if dict_value != hydra_value:
+            differences[key] = dict_value
+    
+    return differences

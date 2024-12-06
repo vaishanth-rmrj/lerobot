@@ -5,6 +5,7 @@ import signal
 import logging
 import asyncio
 import time 
+from omegaconf import OmegaConf
 
 from typing import Dict, List, Optional
 
@@ -15,8 +16,7 @@ from fastapi.responses import StreamingResponse
 # project imports
 from lerobot.common.utils.utils import init_hydra_config
 from lerobot.gui_app.robot_control import RobotControl
-# from lerobot.common.utils.utils import init_logging
-from lerobot.gui_app.utils import init_logging
+from lerobot.gui_app.utils import init_logging, compare_configs
 
 SHUTDOWN_APP = False
 DEFAULT_APP_CONFIG_PATH = "lerobot/gui_app/configs/mode_cfg.yaml"
@@ -65,7 +65,7 @@ async def stop_robot():
     return {"status": "success"}
 
 @app.post("/telop/config-update")
-async def process_form(robot_config: str = Form(...), fps: int = Form(...)):
+async def update_teleop_config(robot_config: str = Form(...), fps: int = Form(...)):
 
     if not robot_controller.config.robot_cfg_file == robot_config:
         logging.info("Robot configuration changed")
@@ -76,6 +76,57 @@ async def process_form(robot_config: str = Form(...), fps: int = Form(...)):
     if not robot_controller.config.teleop.fps == fps:
         robot_controller.stop_all_processes()
         robot_controller.config.teleop.fps = fps
+
+@app.post("/record/config-update")
+async def update_record_config(
+        robot_config: str = Form(...), 
+        root_dir: str = Form(...), 
+        repo_id: str = Form(...), 
+        tags: str = Form(...), 
+        fps: int = Form(...),
+        resume: bool = Form(False),
+        local_files_only: bool = Form(False),
+        run_compute_stats: bool = Form(False),
+        push_to_hub: bool = Form(False),
+        warmup_time_s: int = Form(...),
+        episode_time_s: int = Form(...),
+        reset_time_s: int = Form(...),
+        num_episodes: int = Form(...),
+        num_image_writer_processes: int = Form(...),
+        num_image_writer_threads_per_camera: int = Form(...),
+    ):
+
+    new_record_config = {
+        "root": root_dir,
+        "repo_id": repo_id,
+        "tags": tags,
+        "fps": fps,
+        "resume": resume,
+        "local_files_only": local_files_only,
+        "run_compute_stats": run_compute_stats,
+        "push_to_hub": push_to_hub,
+        "warmup_time_s": warmup_time_s,
+        "episode_time_s": episode_time_s,
+        "reset_time_s": reset_time_s,
+        "num_episodes": num_episodes,
+        "num_image_writer_processes": num_image_writer_processes,
+        "num_image_writer_threads_per_camera": num_image_writer_threads_per_camera,
+    }
+
+    diff = compare_configs(new_record_config, robot_controller.config.record)
+
+    if not robot_controller.config.robot_cfg_file == robot_config:
+        logging.info("Robot configuration changed")
+        robot_controller.config.robot_cfg_file = robot_config
+        robot_controller.stop_all_processes()
+        robot_controller.init_robot(robot_config)
+
+    if len(diff.keys()) > 0:
+        robot_controller.stop_all_processes()
+        logging.info(f"Modified Configs: {diff}")
+        robot_controller.config.record = OmegaConf.create(new_record_config)
+        logging.info(f"Updated Configs: {robot_controller.config.record}")
+
 
 # @app.get('/stream')
 # async def stream_output():
