@@ -14,331 +14,313 @@
         <h1>LeRobot Control Panel</h1>
     </div>
 
-    <div class="container p-4">
-        <ul class="nav nav-tabs" id="myTab" role="tablist">
-            <li class="nav-item " role="presentation">
-              <button class="nav-link" id="teleop-tab" data-bs-toggle="tab" data-bs-target="#teleop-tab-pane" type="button" role="tab" aria-controls="teleop-tab-pane" aria-selected="true">Teleop</button>
-            </li>
-            <li class="nav-item" role="presentation">
-              <button class="nav-link active" id="record-tab" data-bs-toggle="tab" data-bs-target="#record-tab-pane" type="button" role="tab" aria-controls="record-tab-pane" aria-selected="false">Record</button>
-            </li>
-            <li class="nav-item" role="presentation">
-              <button class="nav-link" id="replay-tab" data-bs-toggle="tab" data-bs-target="#replay-tab-pane" type="button" role="tab" aria-controls="replay-tab-pane" aria-selected="false">Replay</button>
-            </li>
-            <li class="nav-item" role="presentation">
-              <button class="nav-link" id="calibrate-tab" data-bs-toggle="tab" data-bs-target="#calibrate-tab-pane" type="button" role="tab" aria-controls="calibrate-tab-pane" aria-selected="false">Calibrate</button>
-            </li>
-        </ul>
-        <div class="tab-content" id="myTabContent">
+    <div class="container">
+      <div class="row">
 
-            <!-- teleop controls tab-->
-            <div class="tab-pane fade" id="teleop-tab-pane" role="tabpanel" aria-labelledby="teleop-tab" tabindex="0">
-                <div class="container">
-                    <div class="row">
-                        <div class="col-6">
-                            <div class="container p-4">
-
-                                <!-- teleop control buttons -->
-                                <div class="card">
-                                    <h5 class="card-header">Mode Controls</h5>
-                                    <div class="card-body">
-                                      <button class="btn btn-primary" id="startTeleopBtn">Start Teleop</button>
-                                      <button class="btn btn-danger" id="stopBtn">Stop</button>
-
-                                      <!-- toggle swtich -->
-                                      <div class="form-check form-switch mt-2">
-                                        <input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckDefault">
-                                        <label class="form-check-label" for="flexSwitchCheckDefault">Display Info</label>
-                                      </div>
-
-                                    </div>
-                                </div>
-
-                                <!-- teleop configuration -->
-                                <div class="accordion mt-lg-4" id="teleopAccordians">
-                                  <div class="accordion-item">
-                                    <h2 class="accordion-header">
-                                      <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
-                                        Mode Configurations
-                                      </button>
-                                    </h2>
-                                    <div id="collapseOne" class="accordion-collapse collapse" data-bs-parent="#teleopAccordians">
-                                      <div class="accordion-body">
-                                        <p class="card-text">Config parameters for robot teleop</p>
-
-                                        <!-- configs -->
-                                        <form id="teleopConfigForm" action="/telop/config-update" method="post">
-
-                                          <div class="mb-3">
-                                            <label for="robotConfigSelect" class="form-label">Robot Config File</label>
-                                            <select id="robotConfigSelect" class="form-select" name="robot_config">
-                                              <option>lerobot/configs/robot/koch.yaml</option>
-                                              <option>lerobot/configs/robot/so100.yaml</option>
-                                            </select>
-                                          </div>
-
-                                          <div class="row g-3 align-items-center mb-3">
-                                            <div class="col-auto">
-                                              <label for="teleopFPS" class="col-form-label">FPS</label>
-                                            </div>
-                                            <div class="col-auto">
-                                              <input type="number" id="teleopFPS" name="fps" class="form-control" aria-describedby="teleopHelpInline" value=30>
-                                            </div>
-                                          </div>
-
-                                          <button type="submit" class="btn btn-primary">Apply</button>
-                                        </form>
-
-                                      </div>
-                                    </div>
-                                  </div>
-                                  
-                                  <!-- log messages -->
-                                  <div class="accordion-item">
-                                    <h2 class="accordion-header">
-                                      <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#teleopCollapseLogs" aria-expanded="true" aria-controls="teleopCollapseLogs">
-                                        Logs
-                                      </button>
-                                    </h2>
-                                    <div id="teleopCollapseLogs" class="accordion-collapse collapse" data-bs-parent="#teleopAccordians">
-                                      <div class="accordion-body" id="teleopLogsDisplay" style="overflow: scroll; max-height: 500px; font-size: 12px;"></div>
-                                    </div>
-                                  </div>
-                                </div>
+        <div class="col-6">
+          <div class="container p-4">
+            <ul class="nav nav-tabs" id="myTab" role="tablist">
+                <li class="nav-item " role="presentation">
+                  <button class="nav-link" id="teleop-tab" data-bs-toggle="tab" data-bs-target="#teleop-tab-pane" type="button" role="tab" aria-controls="teleop-tab-pane" aria-selected="true">Teleop</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link active" id="record-tab" data-bs-toggle="tab" data-bs-target="#record-tab-pane" type="button" role="tab" aria-controls="record-tab-pane" aria-selected="false">Record</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link" id="replay-tab" data-bs-toggle="tab" data-bs-target="#replay-tab-pane" type="button" role="tab" aria-controls="replay-tab-pane" aria-selected="false">Replay</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link" id="calibrate-tab" data-bs-toggle="tab" data-bs-target="#calibrate-tab-pane" type="button" role="tab" aria-controls="calibrate-tab-pane" aria-selected="false">Calibrate</button>
+                </li>
+            </ul>
+            <div class="tab-content" id="myTabContent">
+    
+                <!-- teleop controls tab-->
+                <div class="tab-pane fade" id="teleop-tab-pane" role="tabpanel" aria-labelledby="teleop-tab" tabindex="0">
+                    <div class="container p-4">
+    
+                      <!-- teleop control buttons -->
+                      <div class="card">
+                          <h5 class="card-header">Mode Controls</h5>
+                          <div class="card-body">
+                            <button class="btn btn-primary" id="startTeleopBtn">Start Teleop</button>
+                            <button class="btn btn-danger" id="stopBtn">Stop</button>
+    
+                            <!-- toggle swtich -->
+                            <div class="form-check form-switch mt-2">
+                              <input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckDefault">
+                              <label class="form-check-label" for="flexSwitchCheckDefault">Display Info</label>
                             </div>
-                        </div>
-
-                        <div class="col-6">
-                            <div class="container p-4">
-                                <div class="card">
-                                    <div class="card-body">
-                                      <!-- <h5 class="card-title">Card title</h5> -->
-                                      <p class="card-text">cam name</p>
-                                      <!-- <p class="card-text"><small class="text-body-secondary">Last updated 3 mins ago</small></p> -->
-                                    </div>
-                                    <img src="/video/0" class="card-img-bottom" alt="" style="width: 640px; height: 480px; background: #000; border-radius: 4px;">
+    
+                          </div>
+                      </div>
+    
+                      <!-- teleop configuration -->
+                      <div class="accordion mt-lg-4" id="teleopAccordians">
+                        <div class="accordion-item">
+                          <h2 class="accordion-header">
+                            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
+                              Mode Configurations
+                            </button>
+                          </h2>
+                          <div id="collapseOne" class="accordion-collapse collapse" data-bs-parent="#teleopAccordians">
+                            <div class="accordion-body">
+                              <p class="card-text">Config parameters for robot teleop</p>
+    
+                              <!-- configs -->
+                              <form id="teleopConfigForm" action="/telop/config-update" method="post">
+    
+                                <div class="mb-3">
+                                  <label for="robotConfigSelect" class="form-label">Robot Config File</label>
+                                  <select id="robotConfigSelect" class="form-select" name="robot_config">
+                                    <option>lerobot/configs/robot/koch.yaml</option>
+                                    <option>lerobot/configs/robot/so100.yaml</option>
+                                  </select>
                                 </div>
-
-                                <div class="card">
-                                    <div class="card-body">
-                                      <!-- <h5 class="card-title">Card title</h5> -->
-                                      <p class="card-text">cam name</p>
-                                      <!-- <p class="card-text"><small class="text-body-secondary">Last updated 3 mins ago</small></p> -->
-                                    </div>
-                                    <img src="https://plus.unsplash.com/premium_photo-1669357657874-34944fa0be68?q=80&w=3870&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" class="card-img-bottom" alt="">
+    
+                                <div class="row g-3 align-items-center mb-3">
+                                  <div class="col-auto">
+                                    <label for="teleopFPS" class="col-form-label">FPS</label>
+                                  </div>
+                                  <div class="col-auto">
+                                    <input type="number" id="teleopFPS" name="fps" class="form-control" aria-describedby="teleopHelpInline" value=30>
+                                  </div>
                                 </div>
-                            </div>                            
+    
+                                <button type="submit" class="btn btn-primary">Apply</button>
+                              </form>
+    
+                            </div>
+                          </div>
                         </div>
+                        
+                        <!-- log messages -->
+                        <div class="accordion-item">
+                          <h2 class="accordion-header">
+                            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#teleopCollapseLogs" aria-expanded="true" aria-controls="teleopCollapseLogs">
+                              Logs
+                            </button>
+                          </h2>
+                          <div id="teleopCollapseLogs" class="accordion-collapse collapse" data-bs-parent="#teleopAccordians">
+                            <div class="accordion-body" id="teleopLogsDisplay" style="overflow: scroll; max-height: 500px; font-size: 12px;"></div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                 </div>
-            </div>
-            
-            <!-- record controls tab-->
-            <div class="tab-pane fade show active" id="record-tab-pane" role="tabpanel" aria-labelledby="record-tab" tabindex="1">
-              <div class="container">
-                <div class="row">
-                    <div class="col-6">
-                        <div class="container p-4">
-
-                            <!-- record control buttons -->
-                            <div class="card">
-                                <h5 class="card-header">Mode Controls</h5>
-                                <div class="card-body">
-
-                                  <button class="btn btn-primary" id="startRecordSessionBtn"><i class="bi bi-arrow-repeat"></i> Start Session</button>
-                                  <button class="btn btn-danger" id="stopRecordSessionBtn"><i class="bi bi-ban"></i> Stop Session</button>
-
-                                  <hr>
-                                  <div class="mt-2">
-
-                                    <button class="btn btn-success" id="startRecordBtn"><i class="bi bi-record-fill"></i> Record</button>                                    
-                                    <button class="btn btn-primary" id="finishRecordBtn"><i class="bi bi-save-fill "></i> Finish</button>
-                                    <button class="btn btn-danger" id="cancelRecordBtn"><i class="bi bi-trash3-fill"></i> Cancel</button>
-
-                                  </div>
-
-                                  <!-- toggle switch -->
-                                  <div class="form-check form-switch mt-2">
-                                    <input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckDefault">
-                                    <label class="form-check-label" for="flexSwitchCheckDefault">Display Info</label>
-                                  </div>
-
+                
+                <!-- record controls tab-->
+                <div class="tab-pane fade show active" id="record-tab-pane" role="tabpanel" aria-labelledby="record-tab" tabindex="1">
+                  <div class="container">
+                    <!-- record control buttons -->
+                    <div class="card">
+                        <h5 class="card-header">Mode Controls</h5>
+                        <div class="card-body">
+    
+                          <button class="btn btn-primary" id="startRecordSessionBtn"><i class="bi bi-arrow-repeat"></i> Start Session</button>
+                          <button class="btn btn-danger" id="stopRecordSessionBtn"><i class="bi bi-ban"></i> Stop Session</button>
+    
+                          <hr>
+                          <div class="mt-2">
+    
+                            <button class="btn btn-success" id="startRecordBtn"><i class="bi bi-record-fill"></i> Record</button>                                    
+                            <button class="btn btn-primary" id="finishRecordBtn"><i class="bi bi-save-fill "></i> Finish</button>
+                            <button class="btn btn-danger" id="cancelRecordBtn"><i class="bi bi-trash3-fill"></i> Cancel</button>
+    
+                          </div>
+    
+                          <!-- toggle switch -->
+                          <div class="form-check form-switch mt-2">
+                            <input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckDefault">
+                            <label class="form-check-label" for="flexSwitchCheckDefault">Display Info</label>
+                          </div>
+    
+                        </div>
+                    </div>
+    
+                    <!-- record configuration -->
+                    <div class="accordion mt-lg-4" id="recordAccordian">
+    
+                      <div class="accordion-item">
+    
+                        <h2 class="accordion-header">
+                          <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseRecordTab" aria-expanded="true" aria-controls="collapseRecordTab">
+                            Recording Configurations
+                          </button>
+                        </h2>
+    
+                        <div id="collapseRecordTab" class="accordion-collapse collapse" data-bs-parent="#recordAccordian">
+                          <div class="accordion-body">
+                            <p class="card-text">Config parameters for robot dataset recording</p>
+    
+                            <!-- configs -->
+                            <form id="recordConfigForm" action="/record/config-update" method="post">
+    
+                              <div class="mb-3">
+                                <label for="robotConfigSelect" class="form-label">Robot Config File</label>
+                                <select id="robotConfigSelect" class="form-select" name="robot_config">
+                                  <option>lerobot/configs/robot/so100.yaml</option>
+                                  <option>lerobot/configs/robot/koch.yaml</option>                                          
+                                </select>
+                              </div>                                                                           
+    
+                              <div class="row g-3 align-items-center mb-3">
+                                <div class="col-auto">
+                                  <label for="recordRoot" class="col-form-label">Root Dir</label>
                                 </div>
-                            </div>
-
-                            <!-- record configuration -->
-                            <div class="accordion mt-lg-4" id="recordAccordian">
-
-                              <div class="accordion-item">
-
-                                <h2 class="accordion-header">
-                                  <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseRecordTab" aria-expanded="true" aria-controls="collapseRecordTab">
-                                    Recording Configurations
-                                  </button>
-                                </h2>
-
-                                <div id="collapseRecordTab" class="accordion-collapse collapse" data-bs-parent="#recordAccordian">
-                                  <div class="accordion-body">
-                                    <p class="card-text">Config parameters for robot dataset recording</p>
-
-                                    <!-- configs -->
-                                    <form id="recordConfigForm" action="/record/config-update" method="post">
-
-                                      <div class="mb-3">
-                                        <label for="robotConfigSelect" class="form-label">Robot Config File</label>
-                                        <select id="robotConfigSelect" class="form-select" name="robot_config">
-                                          <option>lerobot/configs/robot/so100.yaml</option>
-                                          <option>lerobot/configs/robot/koch.yaml</option>                                          
-                                        </select>
-                                      </div>                                                                           
-
-                                      <div class="row g-3 align-items-center mb-3">
-                                        <div class="col-auto">
-                                          <label for="recordRoot" class="col-form-label">Root Dir</label>
-                                        </div>
-                                        <div class="col-auto">
-                                          <input type="text" id="recordRoot" name="root_dir" class="form-control" aria-describedby="recordHelpline" value="data/">
-                                        </div>
-                                      </div>
-
-                                      <div class="row g-3 align-items-center mb-3">
-                                        <div class="col-auto">
-                                          <label for="recordRepoID" class="col-form-label">Repo ID</label>
-                                        </div>
-                                        <div class="col-auto">
-                                          <input type="text" id="recordRepoID" name="repo_id" class="form-control" aria-describedby="recordHelpline" value="default/dataset">
-                                        </div>
-                                      </div>
-
-                                      <div class="row g-3 align-items-center mb-3">
-                                        <div class="col-auto">
-                                          <label for="recordTags" class="col-form-label">Tags</label>
-                                        </div>
-                                        <div class="col-auto">
-                                          <input type="text" id="recordTags" name="tags" class="form-control" aria-describedby="recordHelpline" value="">
-                                        </div>
-                                      </div>
-
-                                      <div class="row g-3 align-items-center mb-3">
-                                        <div class="col-auto">
-                                          <label for="recordSingleTask" class="col-form-label">Single Task Desc</label>
-                                        </div>
-                                        <div class="col-auto">
-                                          <input type="text" id="recordSingleTask" name="single_task" class="form-control" aria-describedby="recordHelpline" value="">
-                                        </div>
-                                      </div>
-
-                                      <div class="row g-3 align-items-center mb-3">
-                                        <div class="col-auto">
-                                          <label for="recordFPS" class="col-form-label">FPS</label>
-                                        </div>
-                                        <div class="col-auto">
-                                          <input type="number" id="recordFPS" name="fps" class="form-control" aria-describedby="recordHelpline" value="30">
-                                        </div>
-                                      </div> 
-
-                                      <div class="container mb-3 d-flex flex-wrap">
-
-                                        <div class="form-check form-switch" style="margin-right: 10px;">
-                                          <input class="form-check-input" name="resume" type="checkbox" role="switch" id="resumeRecordToggle">
-                                          <label class="form-check-label" for="resumeRecordToggle">Resume</label>
-                                        </div>
-  
-                                        <div class="form-check form-switch" style="margin-right: 10px;">
-                                          <input class="form-check-input" name="local_files_only" type="checkbox" role="switch" id="recordLocalFilesToggle">
-                                          <label class="form-check-label" for="recordLocalFilesToggle">Local Files Only</label>
-                                        </div>
-
-                                        <div class="form-check form-switch mb-3">
-                                          <input class="form-check-input" name="run_compute_stats" type="checkbox" role="switch" id="recordRunComputeStats" checked>
-                                          <label class="form-check-label" for="recordRunComputeStats">Run Compute Stats</label>
-                                        </div>
-  
-                                        <div class="form-check form-switch mb-3">
-                                          <input class="form-check-input" name="push_to_hub" type="checkbox" role="switch" id="recordPushToHub">
-                                          <label class="form-check-label" for="recordPushToHub">Push To Hub</label>
-                                        </div>
-
-                                      </div>                                     
-                                      
-
-                                      <div class="input-group mb-3">
-                                        <span class="input-group-text">Warmup Time</span>
-                                        <input type="number" class="form-control" id="recordWarmupTime" name="warmup_time_s" value="10" aria-label="warmup time">
-                                        <span class="input-group-text">Episode Time</span>
-                                        <input type="number" class="form-control" id="recordEpisodeTime" name="episode_time_s" value="40" aria-label="episode time">
-                                      </div>
-
-                                      <div class="input-group mb-3">
-                                        <span class="input-group-text">Reset Time</span>
-                                        <input type="number" class="form-control" id="recordResetTime" name="reset_time_s" value="10" aria-label="reset time">
-                                        <span class="input-group-text">No. Episodes</span>
-                                        <input type="number" class="form-control" id="recordNumEpisodes" name="num_episodes" value="50" aria-label="number of episodes">
-                                      </div>
-
-                                      
-
-                                      <div class="input-group mb-3">
-                                        <span class="input-group-text">Image Writer Processes</span>
-                                        <input type="number" class="form-control" id="recordImageWriterProcesses" name="num_image_writer_processes" value="0" aria-label="number of processes for image writer">
-                                        <span class="input-group-text">Writer Threads</span>
-                                        <input type="number" class="form-control" id="recordImageWriterThreads" name="num_image_writer_threads_per_camera" value="4" aria-label="number of threads for image writer">
-                                      </div>
-
-
-                                      <button type="submit" class="btn btn-primary">Apply</button>
-
-                                    </form>
-
-                                  </div>
+                                <div class="col-auto">
+                                  <input type="text" id="recordRoot" name="root_dir" class="form-control" aria-describedby="recordHelpline" value="data/">
                                 </div>
                               </div>
+    
+                              <div class="row g-3 align-items-center mb-3">
+                                <div class="col-auto">
+                                  <label for="recordRepoID" class="col-form-label">Repo ID</label>
+                                </div>
+                                <div class="col-auto">
+                                  <input type="text" id="recordRepoID" name="repo_id" class="form-control" aria-describedby="recordHelpline" value="default/dataset">
+                                </div>
+                              </div>
+    
+                              <div class="row g-3 align-items-center mb-3">
+                                <div class="col-auto">
+                                  <label for="recordTags" class="col-form-label">Tags</label>
+                                </div>
+                                <div class="col-auto">
+                                  <input type="text" id="recordTags" name="tags" class="form-control" aria-describedby="recordHelpline" value="">
+                                </div>
+                              </div>
+    
+                              <div class="row g-3 align-items-center mb-3">
+                                <div class="col-auto">
+                                  <label for="recordSingleTask" class="col-form-label">Single Task Desc</label>
+                                </div>
+                                <div class="col-auto">
+                                  <input type="text" id="recordSingleTask" name="single_task" class="form-control" aria-describedby="recordHelpline" value="">
+                                </div>
+                              </div>
+    
+                              <div class="row g-3 align-items-center mb-3">
+                                <div class="col-auto">
+                                  <label for="recordFPS" class="col-form-label">FPS</label>
+                                </div>
+                                <div class="col-auto">
+                                  <input type="number" id="recordFPS" name="fps" class="form-control" aria-describedby="recordHelpline" value="30">
+                                </div>
+                              </div> 
+    
+                              <div class="container mb-3 d-flex flex-wrap">
+    
+                                <div class="form-check form-switch" style="margin-right: 10px;">
+                                  <input class="form-check-input" name="resume" type="checkbox" role="switch" id="resumeRecordToggle">
+                                  <label class="form-check-label" for="resumeRecordToggle">Resume</label>
+                                </div>
+    
+                                <div class="form-check form-switch" style="margin-right: 10px;">
+                                  <input class="form-check-input" name="local_files_only" type="checkbox" role="switch" id="recordLocalFilesToggle">
+                                  <label class="form-check-label" for="recordLocalFilesToggle">Local Files Only</label>
+                                </div>
+    
+                                <div class="form-check form-switch mb-3">
+                                  <input class="form-check-input" name="run_compute_stats" type="checkbox" role="switch" id="recordRunComputeStats" checked>
+                                  <label class="form-check-label" for="recordRunComputeStats">Run Compute Stats</label>
+                                </div>
+    
+                                <div class="form-check form-switch mb-3">
+                                  <input class="form-check-input" name="push_to_hub" type="checkbox" role="switch" id="recordPushToHub">
+                                  <label class="form-check-label" for="recordPushToHub">Push To Hub</label>
+                                </div>
+    
+                              </div>                                     
                               
-                              <!-- log messages -->
-                              <div class="accordion-item">
-                                <h2 class="accordion-header">
-                                  <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#recordCollapseLogs" aria-expanded="true" aria-controls="recordCollapseLogs">
-                                    Logs
-                                  </button>
-                                </h2>
-                                <div id="recordCollapseLogs" class="accordion-collapse collapse" data-bs-parent="#recordAccordian">
-                                  <div class="accordion-body" id="recordLogsDisplay" style="overflow: scroll; max-height: 500px; font-size: 12px;"></div>
-                                </div>
+    
+                              <div class="input-group mb-3">
+                                <span class="input-group-text">Warmup Time</span>
+                                <input type="number" class="form-control" id="recordWarmupTime" name="warmup_time_s" value="10" aria-label="warmup time">
+                                <span class="input-group-text">Episode Time</span>
+                                <input type="number" class="form-control" id="recordEpisodeTime" name="episode_time_s" value="40" aria-label="episode time">
                               </div>
-                            </div>
+    
+                              <div class="input-group mb-3">
+                                <span class="input-group-text">Reset Time</span>
+                                <input type="number" class="form-control" id="recordResetTime" name="reset_time_s" value="10" aria-label="reset time">
+                                <span class="input-group-text">No. Episodes</span>
+                                <input type="number" class="form-control" id="recordNumEpisodes" name="num_episodes" value="50" aria-label="number of episodes">
+                              </div>
+    
+                              
+    
+                              <div class="input-group mb-3">
+                                <span class="input-group-text">Image Writer Processes</span>
+                                <input type="number" class="form-control" id="recordImageWriterProcesses" name="num_image_writer_processes" value="0" aria-label="number of processes for image writer">
+                                <span class="input-group-text">Writer Threads</span>
+                                <input type="number" class="form-control" id="recordImageWriterThreads" name="num_image_writer_threads_per_camera" value="4" aria-label="number of threads for image writer">
+                              </div>
+    
+    
+                              <button type="submit" class="btn btn-primary">Apply</button>
+    
+                            </form>
+    
+                          </div>
                         </div>
+                      </div>
+                      
+                      <!-- log messages -->
+                      <div class="accordion-item">
+                        <h2 class="accordion-header">
+                          <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#recordCollapseLogs" aria-expanded="true" aria-controls="recordCollapseLogs">
+                            Logs
+                          </button>
+                        </h2>
+                        <div id="recordCollapseLogs" class="accordion-collapse collapse" data-bs-parent="#recordAccordian">
+                          <div class="accordion-body" id="recordLogsDisplay" style="overflow: scroll; max-height: 500px; font-size: 12px;"></div>
+                        </div>
+                      </div>
                     </div>
-
-                    <div class="col-6">
-                        <div class="container p-4">
-                            <div class="card">
-                                <div class="card-body">
-                                  <!-- <h5 class="card-title">Card title</h5> -->
-                                  <p class="card-text">cam name</p>
-                                  <!-- <p class="card-text"><small class="text-body-secondary">Last updated 3 mins ago</small></p> -->
-                                </div>
-                                <img src="/video/0" class="card-img-bottom" alt="" style="width: 640px; height: 480px; background: #000; border-radius: 4px;">
-                            </div>
-
-                            <div class="card">
-                                <div class="card-body">
-                                  <!-- <h5 class="card-title">Card title</h5> -->
-                                  <p class="card-text">cam name</p>
-                                  <!-- <p class="card-text"><small class="text-body-secondary">Last updated 3 mins ago</small></p> -->
-                                </div>
-                                <img src="https://plus.unsplash.com/premium_photo-1669357657874-34944fa0be68?q=80&w=3870&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" class="card-img-bottom" alt="">
-                            </div>
-                        </div>                            
-                    </div>
+                    <!-- <div class="row">
+                        <div class="col-6">
+                            
+                        </div>
+                    </div> -->
+                  </div>
                 </div>
-              </div>
+    
+    
+                <div class="tab-pane fade" id="replay-tab-pane" role="tabpanel" aria-labelledby="replay-tab" tabindex="0">...</div>
+                <div class="tab-pane fade" id="calibrate-tab-pane" role="tabpanel" aria-labelledby="calibrate-tab" tabindex="0">...</div>
             </div>
-
-
-            <div class="tab-pane fade" id="replay-tab-pane" role="tabpanel" aria-labelledby="replay-tab" tabindex="0">...</div>
-            <div class="tab-pane fade" id="calibrate-tab-pane" role="tabpanel" aria-labelledby="calibrate-tab" tabindex="0">...</div>
+          </div>
         </div>
+  
+        <div class="col-6">
+          <div class="container mt-6" id="cameraContainer">
+            <!-- cam feeds will be dynamically populated here -->
+
+            <!-- <div class="card">
+                <div class="card-body">
+                  <p class="card-text">cam name</p>
+                </div>
+                <div class="container-fluid">
+                  <img src="/video/0" class="card-img-bottom img-fluid" alt="" style="background: #000; border-radius: 4px;">
+                   <img src="https://plus.unsplash.com/premium_photo-1669357657874-34944fa0be68?q=80&w=3870&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" class="card-img-bottom img-fluid" alt="">
+
+                </div>
+            </div> -->
+  
+            <!-- <div class="card">
+                <div class="card-body">
+                  <p class="card-text">cam name</p>
+                </div>
+                <img src="https://plus.unsplash.com/premium_photo-1669357657874-34944fa0be68?q=80&w=3870&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D" class="card-img-bottom" alt="">
+            </div>  -->
+
+          </div>  
+        </div>
+      </div>
     </div>
+
+    
 
     <script>
         //   async function updateStatus() {
@@ -355,44 +337,56 @@
         //     }
         //   }
     
-          // function connectEventSource() {
-          //   if (window.eventSource) {
-          //     window.eventSource.close();
-          //   }
-    
-          //   window.eventSource = new EventSource("/stream");
-    
-          //   window.eventSource.onmessage = function (event) {
-          //     const newLine = document.createElement("div");
-          //     newLine.textContent = event.data;
-          //     output.appendChild(newLine);
-          //     output.scrollTop = output.scrollHeight;
-    
-          //     if (event.data === "--- Streaming ended ---") {
-          //       window.eventSource.close();
-          //     }
-          //   };
-    
-          //   window.eventSource.onerror = function (error) {
-          //     console.error("SSE Error:", error);
-          //     window.eventSource.close();
-          //   };
-          // }
+              document.addEventListener("DOMContentLoaded", async () => {
+              const container = document.getElementById("cameraContainer");
 
-          // function startStreaming() {
-          //       const eventSource = new EventSource("/stream");
-          //       const textArea = document.getElementById("output");
+              try {
+                  // Fetch the list of cameras from the backend
+                  const response = await fetch("/robot/cameras");
+                  const cameras = await response.json();
 
-          //       eventSource.onmessage = function(event) {
-          //           textArea.value += event.data + "\\n"; // Append new text
-          //           textArea.scrollTop = textArea.scrollHeight; // Auto-scroll
-          //       };
+                  // Populate the container with cards
+                  cameras.forEach(camera => {
+                      // Create the card div
+                      const card = document.createElement("div");
+                      card.className = "card";
+                      card.style.marginBottom = "20px"; // Add some spacing between cards
+                      card.style.width = "640px";
+                      card.style.height = "480px";
 
-          //       eventSource.onerror = function() {
-          //           console.log("Error occurred while streaming.");
-          //           eventSource.close();
-          //       };
-          //   }
+                      // Create the card body
+                      const cardBody = document.createElement("div");
+                      cardBody.className = "card-body";
+
+                      // Add camera name as a paragraph
+                      const cardText = document.createElement("p");
+                      cardText.className = "card-text";
+                      cardText.textContent = camera.name;
+                      cardBody.appendChild(cardText);
+
+                      // Add the video/image element
+                      const cardImg = document.createElement("img");
+                      cardImg.className = "card-img-bottom";
+                      cardImg.alt = camera.name;
+                      cardImg.style.width = "640px";
+                      cardImg.style.height = "480px";
+                      cardImg.style.background = "#000";
+                      cardImg.style.borderRadius = "4px";
+
+                      // Set the image/video source
+                      cardImg.src = camera.video_url;
+
+                      // Append body and image to card
+                      card.appendChild(cardBody);
+                      card.appendChild(cardImg);
+
+                      // Append card to the container
+                      container.appendChild(card);
+                  });
+              } catch (error) {
+                  console.error("Error fetching camera data:", error);
+              }
+          });
     
           document
             .getElementById("startTeleopBtn")

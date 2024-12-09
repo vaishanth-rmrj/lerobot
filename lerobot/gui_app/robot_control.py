@@ -48,7 +48,9 @@ class RobotControl:
             self.events["force_stop"] = False
             self.events["start_recording"] = False
 
-        self.robot = self.init_robot(self.config.robot_cfg_file)      
+        self.robot = self.init_robot(self.config.robot_cfg_file)  
+
+        self.get_camera_info()    
     
     def init_robot(self, config_path: str):
         logging.info(f"Provided robot config file: {config_path}")
@@ -61,6 +63,16 @@ class RobotControl:
     @property
     def num_cameras(self):
         return self.robot.cameras
+    
+    def get_camera_info(self) -> List:
+        cam_info = []
+        for cam_id, cam_name in enumerate(self.robot.cameras.keys()):
+            cam_info.append({
+                "id": cam_id,
+                "name": str(cam_name),
+                "video_url": "/video/observation.images."+str(cam_name)
+            })        
+        return cam_info
         
     def check_force_stop(self, events):
         if events["force_stop"]:

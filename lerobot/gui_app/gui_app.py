@@ -1,5 +1,6 @@
 import os
 import cv2
+import numpy as np
 import threading
 import signal
 import logging
@@ -30,27 +31,39 @@ app.mount(
     name='static'
 )
 
-# def fetch_cam_frame(device_id: int):
-#     import time
-#     while not SHUTDOWN_APP:
-#         try:
-#             if robot_controller and robot_controller.cam_buffer is not None:
-#                 yield (b'--frame\r\n'
-#                        b'Content-Type: image/jpeg\r\n\r\n' + robot_controller.cam_buffer.tobytes() + b'\r\n')
-#             time.sleep(0.001)  # Adjust delay as needed
-#         except Exception as e:
-#             print(f"Error fetching frame: {e}")
-#             break
+@app.get("/robot/cameras")
+async def get_cameras():
+    return robot_controller.get_camera_info()
 
-# @app.get("/video/{device_id}")
-# async def get_cam_feed(device_id: int):
-#     try:
-#         return StreamingResponse(
-#             fetch_cam_frame(device_id),
-#             media_type='multipart/x-mixed-replace; boundary=frame'
-#         )
-#     except Exception as e:
-#         print(f"Error in video feed: {e}")
+def fetch_cam_frame(device_id: str):
+    import time
+    while not SHUTDOWN_APP:
+        try:
+            if robot_controller:
+                if len(robot_controller.cams_image_buffer.keys()) > 0:
+                    # print(f"cam feed size: {robot_controller.cams_image_buffer[device_id]}")
+                    yield (b'--frame\r\n'
+                        b'Content-Type: image/jpeg\r\n\r\n' + robot_controller.cams_image_buffer[device_id].tobytes() + b'\r\n')
+                else:
+                    blank_img = np.zeros((640, 480, 3))
+                    _, blank_img_encoded = cv2.imencode('.jpg', blank_img)
+                    yield (b'--frame\r\n'
+                        b'Content-Type: image/jpeg\r\n\r\n' + blank_img_encoded.tobytes() + b'\r\n')
+                    
+            time.sleep(0.001)  # Adjust delay as needed
+        except Exception as e:
+            print(f"Error fetching frame: {e}")
+            break
+
+@app.get("/video/{device_id}")
+async def get_cam_feed(device_id: str):
+    try:
+        return StreamingResponse(
+            fetch_cam_frame(device_id),
+            media_type='multipart/x-mixed-replace; boundary=frame'
+        )
+    except Exception as e:
+        print(f"Error in video feed: {e}")
 
 @app.get("/select_mode/{mode}")
 async def select_control_mode(mode: str):
