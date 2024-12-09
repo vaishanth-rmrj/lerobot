@@ -8,6 +8,7 @@ import logging
 import asyncio
 import time 
 from omegaconf import OmegaConf
+from omegaconf.dictconfig import DictConfig
 
 from typing import Dict, List, Optional
 
@@ -31,6 +32,13 @@ app.mount(
     ),
     name='static'
 )
+
+def cache_config(config: DictConfig, dir:str =".cache"):
+    cache_dir = (Path(__file__).resolve().parent / ".cache").resolve()
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    cache_file = cache_dir / "mode_cfg.yaml"
+    OmegaConf.save(config, cache_file)    
+    logging.info(f"Config cached to: {cache_file}")
 
 @app.get("/")
 async def redirect_to_control_panel():
@@ -170,7 +178,9 @@ async def update_record_config(
         if active_threads: robot_controller.stop_threads()
         logging.info(f"Modified Configs: {diff}")
         robot_controller.config.record = OmegaConf.create(new_record_config)
-        logging.info(f"Updated Configs: {robot_controller.config.record}")
+        logging.info(f"Updated Configs: {robot_controller.config.record}")    
+
+    cache_config(robot_controller.config)
 
 @app.get("/record/start_recording")
 async def start_recording():
@@ -217,7 +227,12 @@ if __name__ == "__main__":
     import uvicorn
 
     # init app config
-    app_cfg = init_hydra_config(DEFAULT_APP_CONFIG_PATH)
+    cache_dir = (Path(__file__).resolve().parent / ".cache" / "mode_cfg.yaml").resolve()
+    if cache_dir.exists():
+        logging.info("App cache found. Loading config from cache.")        
+        app_cfg = init_hydra_config(cache_dir)
+    else:
+        app_cfg = init_hydra_config(DEFAULT_APP_CONFIG_PATH)
 
     # init logging and capture the custom list handler
     log_list_handler = init_logging()    
