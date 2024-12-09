@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import cv2
 import numpy as np
 import threading
@@ -34,6 +35,12 @@ app.mount(
 @app.get("/")
 async def redirect_to_control_panel():
     return RedirectResponse(url="/static/control_panel.html")
+
+@app.get("/robot/configs-path")
+async def get_robot_config_files_path():
+    configs_dir = (Path(__file__).resolve().parent / ".." / "configs/robot").resolve()
+    sliced_config_dir = "/".join(configs_dir.parts[-3:])
+    return [f"{sliced_config_dir}/{file.name}" for file in configs_dir.iterdir() if file.is_file()]
 
 @app.get("/robot/cameras")
 async def get_cameras():
