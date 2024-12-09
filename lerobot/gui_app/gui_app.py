@@ -12,7 +12,7 @@ from typing import Dict, List, Optional
 
 from fastapi import FastAPI, Form
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, RedirectResponse
 
 # project imports
 from lerobot.common.utils.utils import init_hydra_config
@@ -30,6 +30,10 @@ app.mount(
     ),
     name='static'
 )
+
+@app.get("/")
+async def redirect_to_control_panel():
+    return RedirectResponse(url="/static/control_panel.html")
 
 @app.get("/robot/cameras")
 async def get_cameras():
