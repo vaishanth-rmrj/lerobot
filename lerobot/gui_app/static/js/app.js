@@ -61,10 +61,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         cameras.forEach(camera => {
             // Create the card div
             const card = document.createElement("div");
-            card.className = "card";
+            card.className = "card mb-4";
             card.style.marginBottom = "20px"; // Add some spacing between cards
             card.style.width = "640px";
-            card.style.height = "480px";
+            // card.style.height = "480px";
 
             // Create the card body
             const cardBody = document.createElement("div");
@@ -113,14 +113,10 @@ document
     }); 
 
 document
-    .getElementById("stopBtn")
+    .getElementById("stopTeleopBtn")
     .addEventListener("click", async () => {
     try {
         await fetch("/stop", { method: "GET" });
-        // updateStatus();
-        // if (window.eventSource) {
-        //   window.eventSource.close();
-        // }
     } catch (error) {
         console.error("Error stopping teleoperation:", error);
     }
