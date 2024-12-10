@@ -57,18 +57,20 @@ document.addEventListener("DOMContentLoaded", async () => {
         const response = await fetch("/robot/cameras");
         const cameras = await response.json();
 
+        container.innerHTML = "";
         // Populate the container with cards
         cameras.forEach(camera => {
             // Create the card div
             const card = document.createElement("div");
-            card.className = "card mb-4";
-            card.style.marginBottom = "20px"; // Add some spacing between cards
-            card.style.width = "640px";
-            // card.style.height = "480px";
+            card.className = "card m-4";
+            // card.style.marginBottom = "20px";
+            // card.style.width = "480px";
+            // card.style.height = "240px";
+            card.style.width = "320px";
 
             // Create the card body
             const cardBody = document.createElement("div");
-            cardBody.className = "card-body";
+            cardBody.className = "card-body p-2";
 
             // Add camera name as a paragraph
             const cardText = document.createElement("p");
@@ -80,8 +82,11 @@ document.addEventListener("DOMContentLoaded", async () => {
             const cardImg = document.createElement("img");
             cardImg.className = "card-img-bottom";
             cardImg.alt = camera.name;
-            cardImg.style.width = "640px";
-            cardImg.style.height = "480px";
+            // cardImg.style.width = "480px";
+            // cardImg.style.height = "240px";
+
+            cardImg.style.width = "320px";
+            cardImg.style.height = "240px";
             cardImg.style.background = "#000";
             cardImg.style.borderRadius = "4px";
 
@@ -251,22 +256,17 @@ document
 
     function startStreaming() {
     const eventSource = new EventSource("/stream");
-    const teleopLogsDisplay = document.getElementById("teleopLogsDisplay");
-    const recordLogsDisplay = document.getElementById("recordLogsDisplay");
+    const logsDisplay = document.getElementById("logsDisplay");
 
     eventSource.onmessage = function(event) {
 
-        const teleopNewLine = document.createElement("div");
-        teleopNewLine.textContent = event.data;
+        console.log(event.data);
 
-        teleopLogsDisplay.appendChild(teleopNewLine);
-        teleopLogsDisplay.scrollTop = teleopLogsDisplay.scrollHeight;
+        const newLine = document.createElement("div");
+        newLine.textContent = event.data;
 
-        const recordNewLine = document.createElement("div");
-        recordNewLine.textContent = event.data;
-
-        recordLogsDisplay.appendChild(recordNewLine);
-        recordLogsDisplay.scrollTop = recordLogsDisplay.scrollHeight;
+        logsDisplay.appendChild(newLine);
+        logsDisplay.scrollTop = logsDisplay.scrollHeight;
 
         if (event.data === "--- Streaming ended ---") {
             eventSource.close();
