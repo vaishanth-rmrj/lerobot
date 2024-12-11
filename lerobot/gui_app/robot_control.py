@@ -12,7 +12,7 @@ from lerobot.common.robot_devices.control_utils import init_keyboard_listener, b
 from lerobot.common.utils.utils import init_hydra_config
 from lerobot.common.robot_devices.robots.factory import make_robot
 from lerobot.common.datasets.lerobot_dataset import LeRobotDataset
-from lerobot.common.datasets.image_writer import safe_stop_image_writer
+from lerobot.common.datasets.image_writer import safe_stop_image_writer, AsyncImageWriter
 from lerobot.common.robot_devices.robots.utils import Robot
 from lerobot.common.robot_devices.control_utils import (
     control_loop,
@@ -50,7 +50,10 @@ class RobotControl:
 
         self.robot = self.init_robot(self.config.robot_cfg_file)  
 
-        self.get_camera_info()    
+        # self.dataset_image_writer = AsyncImageWriter(
+        #     num_processes=self.config.record.num_image_writer_processes,
+        #     num_threads=self.config.record.num_image_writer_threads_per_camera * len(self.robot.cameras),
+        # ) 
     
     def init_robot(self, config_path: str):
         logging.info(f"Provided robot config file: {config_path}")
@@ -166,9 +169,9 @@ class RobotControl:
         pretrained_policy_name_or_path: str | None = None,
         policy_overrides: List[str] | None = None,
         fps: int | None = None,
-        warmup_time_s: int | float = 2,
+        warmup_time_s: int | float = 0,
         episode_time_s: int | float = 10,
-        reset_time_s: int | float = 5,
+        reset_time_s: int | float = 0,
         num_episodes: int = 50,
         video: bool = True,
         run_compute_stats: bool = True,
@@ -229,19 +232,23 @@ class RobotControl:
                 image_writer_processes=num_image_writer_processes,
                 image_writer_threads=num_image_writer_threads_per_camera * len(robot.cameras),
             )
+        
+        # dataset.image_writer.stop()
+        # time.sleep(2)
+        # dataset.image_writer = self.dataset_image_writer
 
         if not robot.is_connected:
             robot.connect()
 
         enable_teleoperation = policy is None
-        logging.info("Warmup record")
-        self.control_loop(
-            robot=robot,
-            control_time_s=warmup_time_s,
-            events=events,
-            fps=fps,
-            teleoperate=enable_teleoperation,
-        )
+        # logging.info("Warmup record")
+        # self.control_loop(
+        #     robot=robot,
+        #     control_time_s=warmup_time_s,
+        #     events=events,
+        #     fps=fps,
+        #     teleoperate=enable_teleoperation,
+        # )
 
         if has_method(robot, "teleop_safety_stop"):
             robot.teleop_safety_stop()
@@ -282,7 +289,8 @@ class RobotControl:
                 events["exit_early"] = False
                 dataset.clear_episode_buffer()
                 continue
-
+            
+            logging.info(f"Saving Episode {dataset.num_episodes}. Please wait ...")
             dataset.save_episode(task)
             recorded_episodes += 1
 
@@ -323,9 +331,7 @@ class RobotControl:
             repo_id = config.repo_id,
             single_task = config.single_task,
             fps = config.fps,
-            warmup_time_s = config.warmup_time_s,
             episode_time_s = config.episode_time_s,
-            reset_time_s = config.reset_time_s,
             num_episodes = config.num_episodes,
             video = True,
             run_compute_stats = config.run_compute_stats,
@@ -376,8 +382,12 @@ class RobotControl:
                 self.running_threads[thread_id].join()
                 del self.running_threads[thread_id]
                 logging.info(f"{thread_id} background thread was stopped. XD")
+                self.events["force_stop"] = False
+            
+            # self.dataset_image_writer.stop()
         else:
             logging.info(f"stop_threads : No background threads running. XD")
+            self.events["force_stop"] = False
         
         return True if len(self.running_threads) > 0 else False
     

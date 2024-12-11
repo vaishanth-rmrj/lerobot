@@ -239,9 +239,7 @@ document
         form.recordPushToHub.checked = data.push_to_hub;
 
         // Handle time and episode inputs
-        form.recordWarmupTime.value = data.warmup_time_s;
         form.recordEpisodeTime.value = data.episode_time_s;
-        form.recordResetTime.value = data.reset_time_s;
         form.recordNumEpisodes.value = data.num_episodes;
 
         // Handle image writer settings

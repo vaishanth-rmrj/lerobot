@@ -57,10 +57,17 @@ async def get_cameras():
 
 def fetch_cam_frame(device_id: str):
     import time
+    is_warmup_done = False
     while not SHUTDOWN_APP:
         try:
             if robot_controller:
                 if len(robot_controller.cams_image_buffer.keys()) > 0:
+
+                    # warmup to obtain cam feed
+                    if not is_warmup_done:
+                        is_warmup_done = True
+                        time.sleep(2)
+                        
                     # print(f"cam feed size: {robot_controller.cams_image_buffer[device_id]}")
                     yield (b'--frame\r\n'
                         b'Content-Type: image/jpeg\r\n\r\n' + robot_controller.cams_image_buffer[device_id].tobytes() + b'\r\n')
@@ -72,8 +79,7 @@ def fetch_cam_frame(device_id: str):
                     
             time.sleep(0.001)  # Adjust delay as needed
         except Exception as e:
-            print(f"Error fetching frame: {e}")
-            break
+            logging.info(f"Error fetching frame: {e} !!")
 
 @app.get("/video/{device_id}")
 async def get_cam_feed(device_id: str):
@@ -83,11 +89,11 @@ async def get_cam_feed(device_id: str):
             media_type='multipart/x-mixed-replace; boundary=frame'
         )
     except Exception as e:
-        print(f"Error in video feed: {e}")
+        logging.info(f"Error in video feed: {e}")
 
 @app.get("/select_mode/{mode}")
 async def select_control_mode(mode: str):
-    print(f"app : Triggering {mode} mode")
+    logging.info(f"app : Triggering {mode} mode")
 
     active_threads = len(robot_controller.running_threads)
     if active_threads > 0:
@@ -139,9 +145,7 @@ async def update_record_config(
         local_files_only: bool = Form(False),
         run_compute_stats: bool = Form(False),
         push_to_hub: bool = Form(False),
-        warmup_time_s: int = Form(...),
         episode_time_s: int = Form(...),
-        reset_time_s: int = Form(...),
         num_episodes: int = Form(...),
         num_image_writer_processes: int = Form(...),
         num_image_writer_threads_per_camera: int = Form(...),
@@ -157,9 +161,7 @@ async def update_record_config(
         "local_files_only": local_files_only,
         "run_compute_stats": run_compute_stats,
         "push_to_hub": push_to_hub,
-        "warmup_time_s": warmup_time_s,
         "episode_time_s": episode_time_s,
-        "reset_time_s": reset_time_s,
         "num_episodes": num_episodes,
         "num_image_writer_processes": num_image_writer_processes,
         "num_image_writer_threads_per_camera": num_image_writer_threads_per_camera,
