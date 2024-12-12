@@ -842,6 +842,8 @@ class LeRobotDataset(torch.utils.data.Dataset):
     def _wait_image_writer(self) -> None:
         """Wait for asynchronous image writer to finish."""
         if self.image_writer is not None:
+            # for debugging remove when done
+            logging.info("self.image_writer.wait_until_done")
             self.image_writer.wait_until_done()
 
     def encode_videos(self) -> None:

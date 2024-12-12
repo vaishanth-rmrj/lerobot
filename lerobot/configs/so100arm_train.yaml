@@ -8,9 +8,10 @@ hydra:
     # Set `dir` to where you would like to save all of the run outputs. If you run another training session
     # with the same value for `dir` its contents will be overwritten unless you set `resume` to true.
     # dir: outputs/train/${now:%Y-%m-%d}/${now:%H-%M-%S}_${env.name}_${policy.name}_${hydra.job.name}
-    dir: outputs/train/2024-12-03/19-35-28_real_world_act_cube_pick_place_run1
+    # dir: outputs/train/2024-12-03/19-35-28_real_world_act_cube_pick_place_run1
+    dir: outputs/train/2024-12-11/05-32-29_real_world_act_cube_pick_place_2cam_run1
   job:
-    name: cube_pick_place_run1
+    name: cube_pick_place_2cam_run1
 
 # Set `resume` to true to resume a previous run. In order for this to work, you will need to make sure
 # `hydra.run.dir` is the directory of an existing run with at least one checkpoint in it.

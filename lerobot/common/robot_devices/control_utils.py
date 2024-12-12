@@ -289,7 +289,7 @@ def control_loop(
         if display_cameras and not is_headless():
             image_keys = [key for key in observation if "image" in key]
             for key in image_keys:
-                rr.log("/camera/rgb", rr.Image(observation[key].numpy()).compress(jpeg_quality=50), static=True)
+                rr.log(str(key), rr.Image(observation[key].numpy()).compress(jpeg_quality=50), static=True)
             #     cv2.imshow(key, cv2.cvtColor(observation[key].numpy(), cv2.COLOR_RGB2BGR))
             # cv2.waitKey(1)
 
