@@ -1,5 +1,23 @@
 // js for eval gui controls
 
+document.getElementById("startEvalBtn")
+.addEventListener("click", async () => {
+    try {
+        await fetch("/select_mode/eval", { method: "GET" });
+    } catch (error) {
+        console.error("Error starting eval session:", error);
+    }
+});
+
+document.getElementById("stopEvalBtn")
+.addEventListener("click", async () => {
+    try {
+        await fetch("/stop", { method: "GET" });
+    } catch (error) {
+        console.error("Error stopping eval session:", error);
+    }
+});
+
 document.getElementById('evalConfigForm')
 .addEventListener('submit', async (event) => {
     event.preventDefault(); 

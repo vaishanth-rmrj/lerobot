@@ -336,6 +336,67 @@ class RobotControl:
 
         logging.info("Exiting")
     
+    def eval_policy(
+        self,
+        robot: Robot,
+        pretrained_policy_name_or_path: str | None = None,
+        policy_overrides: List[str] | None = None,
+        fps: int | None = None,
+        warmup_time_s: int | float = 0,
+        episode_time_s: int | float = 10,
+        play_sounds: bool = True,
+        events = None,
+    ):
+        
+        listener = self.listener
+        events = events
+        policy = None
+        device = None
+        use_amp = None
+
+        # load pretrained policy
+        if pretrained_policy_name_or_path is not None:
+            policy, policy_fps, device, use_amp = init_policy(pretrained_policy_name_or_path, policy_overrides)
+
+            if fps is None:
+                fps = policy_fps
+                logging.warning(f"No fps provided, so using the fps from policy config ({policy_fps}).")
+            elif fps != policy_fps:
+                logging.warning(
+                    f"There is a mismatch between the provided fps ({fps}) and the one from policy config ({policy_fps})."
+                )
+
+        if not robot.is_connected:
+            robot.connect()
+
+        logging.info("Warmup the robot")
+        self.control_loop(
+            robot=robot,
+            control_time_s=warmup_time_s,
+            events=events,
+            fps=fps,
+            teleoperate=False,
+        )
+
+        if has_method(robot, "teleop_safety_stop"):
+            robot.teleop_safety_stop()
+
+        logging.info("Evaluating policy on robot...")
+        self.control_loop(
+            robot=robot,
+            control_time_s=episode_time_s,                
+            events=events,
+            policy=policy,
+            device=device,
+            use_amp=use_amp,
+            fps=fps,
+            teleoperate=False,
+        )
+        
+        logging.info("Stop eval")
+        stop_recording(robot, listener, display_cameras=False)
+        logging.info("Exiting")
+    
     def run_teleop(self, config):
 
         logging.info("Started teleop control XD")
@@ -371,6 +432,23 @@ class RobotControl:
             events=self.events,
         )
         self.events["force_stop"] = False
+
+    def run_eval(self, config: DictConfig):
+        logging.info("Started eval control XD")
+
+        if not config.record_eval_episodes:
+            self.eval_policy(
+                robot = self.robot,
+                pretrained_policy_name_or_path = config.pretrained_policy_path,
+                fps= config.fps,
+                warmup_time_s = config.warmup_time_s,
+                episode_time_s = config.episode_time_s,
+                events = self.events,
+            )
+        else:
+            raise NotImplementedError("Recording while evaluating policy not implemented!!")
+        
+        self.events["force_stop"] = False
     
     def select_robot_control_mode(self, mode:str):
 
@@ -389,6 +467,12 @@ class RobotControl:
                 target=self.run_record, 
                 daemon=True, 
                 args=[self.config.record]
+            )
+        elif mode == "eval":
+            thread = threading.Thread(
+                target=self.run_eval, 
+                daemon=True, 
+                args=[self.config.eval]
             )        
 
         # start the thread and store it

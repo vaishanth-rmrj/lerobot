@@ -234,8 +234,8 @@ async def update_record_config(
     if len(diff.keys()) > 0:
         if active_threads: robot_controller.stop_threads()
         logging.info(f"Modified Configs: {diff}")
-        robot_controller.config.record = OmegaConf.create(new_eval_config)
-        logging.info(f"Updated Configs: {robot_controller.config.record}")    
+        robot_controller.config.eval = OmegaConf.create(new_eval_config)
+        logging.info(f"Updated Configs: {robot_controller.config.eval}")    
 
     cache_config(robot_controller.config)
 
