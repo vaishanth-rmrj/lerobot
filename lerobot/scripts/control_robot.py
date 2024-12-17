@@ -266,7 +266,7 @@ def record(
     # 2. give times to the robot devices to connect and start synchronizing,
     # 3. place the cameras windows on screen
     enable_teleoperation = policy is None
-    log_say("Warmup record", play_sounds)
+    log_say("Warmup record", play_sounds=False)
     warmup_record(robot, events, enable_teleoperation, warmup_time_s, display_cameras, fps)
 
     if has_method(robot, "teleop_safety_stop"):
@@ -282,7 +282,7 @@ def record(
         # if multi_task:
         #     task = input("Enter your task description: ")
 
-        log_say(f"Recording episode {dataset.num_episodes}", play_sounds)
+        log_say(f"Recording episode {dataset.num_episodes}", play_sounds=False)
         record_episode(
             dataset=dataset,
             robot=robot,
@@ -302,11 +302,11 @@ def record(
         if not events["stop_recording"] and (
             (dataset.num_episodes < num_episodes - 1) or events["rerecord_episode"]
         ):
-            log_say("Reset the environment", play_sounds)
+            log_say("Reset the environment", play_sounds=False)
             reset_environment(robot, events, reset_time_s)
 
         if events["rerecord_episode"]:
-            log_say("Re-record episode", play_sounds)
+            log_say("Re-record episode", play_sounds=False)
             events["rerecord_episode"] = False
             events["exit_early"] = False
             dataset.clear_episode_buffer()
@@ -318,7 +318,7 @@ def record(
         if events["stop_recording"]:
             break
 
-    log_say("Stop recording", play_sounds, blocking=True)
+    log_say("Stop recording", play_sounds=False, blocking=True)
     stop_recording(robot, listener, display_cameras)
 
     if run_compute_stats:
@@ -329,7 +329,7 @@ def record(
     if push_to_hub:
         dataset.push_to_hub(tags=tags)
 
-    log_say("Exiting", play_sounds)
+    log_say("Exiting", play_sounds=False)
     return dataset
 
 
