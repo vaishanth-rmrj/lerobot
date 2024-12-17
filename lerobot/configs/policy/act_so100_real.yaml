@@ -14,17 +14,17 @@
 # ```
 
 seed: 1000
-dataset_repo_id: data/cube_pick_place_2cam_v2 # lerobot/so100_pick_place_lego
+dataset_repo_id: data/white_object_collect # lerobot/so100_pick_place_lego 
 
 override_dataset_stats:
   observation.images.webcam:
     # stats from imagenet, since we use a pretrained vision model
-    mean: [[[0.4127861261367798]], [[0.4774785339832306]], [[0.4590613842010498]]]  # (c,1,1)
-    std: [[[0.1368531882762909]], [[0.15319755673408508]], [[0.19140104949474335]]]  # (c,1,1)
+    mean: [[[0.28885093331336975]], [[0.3042583763599396]], [[0.2837293744087219]]]  # (c,1,1)
+    std: [[[0.15707290172576904]], [[0.15736298263072968]], [[0.1964111626148224]]]  # (c,1,1)
   observation.images.gipper_cam:
     # stats from imagenet, since we use a pretrained vision model
-    mean: [[[0.5186749696731567]], [[0.49662384390830994]], [[0.4950636923313141]]]  # (c,1,1)
-    std: [[[0.12303955852985382]], [[0.12032002210617065]], [[0.13030195236206055]]]  # (c,1,1)
+    mean: [[[0.5355240702629089]], [[0.5128859281539917]], [[0.5243199467658997]]]  # (c,1,1)
+    std: [[[0.20553813874721527]], [[0.20882122218608856]], [[0.2145060896873474]]]  # (c,1,1)
 
 training:
   offline_steps: 80000
