@@ -210,6 +210,63 @@ async def finish_recording():
 
 #     return EventSourceResponse(event_generator())
 
+@app.get("/robot/eval/get-config")
+async def get_config():
+    eval_dict_cfg = OmegaConf.to_container(robot_controller.config.eval, resolve=True)
+    eval_dict_cfg['robot_config'] = robot_controller.config.robot_cfg_file
+    return eval_dict_cfg
+
+@app.post("/robot/eval/config-update")
+async def update_record_config(
+        robot_config: str = Form(...), 
+        policy_path: str = Form(...), 
+        record_episodes: bool = Form(False),
+        push_to_hub: bool = Form(False),
+        root_dir: str = Form(...), 
+        repo_id: str = Form(...), 
+        tags: str = Form(...), 
+        fps: int = Form(...),  
+        warmup_time_s: int = Form(...),      
+        episode_time_s: int = Form(...),
+        num_episodes: int = Form(...),
+        num_image_writer_processes: int = Form(...),
+        num_image_writer_threads_per_camera: int = Form(...),
+        single_task: str = Form(...),
+    ):
+
+    new_eval_config = {
+        "root": root_dir,
+        "pretrained_policy_path": policy_path,
+        "record_eval_episodes": record_episodes,
+        "repo_id": repo_id,
+        "tags": tags,
+        "fps": fps,
+        "push_to_hub": push_to_hub,
+        "warmup_time_s": warmup_time_s,
+        "episode_time_s": episode_time_s,
+        "num_episodes": num_episodes,
+        "num_image_writer_processes": num_image_writer_processes,
+        "num_image_writer_threads_per_camera": num_image_writer_threads_per_camera,
+        "single_task": single_task,
+    }
+
+    diff = compare_configs(new_eval_config, robot_controller.config.eval)
+    active_threads = len(robot_controller.running_threads)
+
+    if not robot_controller.config.robot_cfg_file == robot_config:
+        logging.info("Robot configuration changed")
+        robot_controller.config.robot_cfg_file = robot_config
+        if active_threads: robot_controller.stop_threads()
+        robot_controller.init_robot(robot_config)
+
+    if len(diff.keys()) > 0:
+        if active_threads: robot_controller.stop_threads()
+        logging.info(f"Modified Configs: {diff}")
+        robot_controller.config.record = OmegaConf.create(new_eval_config)
+        logging.info(f"Updated Configs: {robot_controller.config.record}")    
+
+    cache_config(robot_controller.config)
+
 @app.get("/stream")
 async def stream():
     async def event_generator():

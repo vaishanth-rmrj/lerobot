@@ -20,16 +20,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     const recordRobotConfigForm = document.getElementById("recordConfigForm");
     const recordRobotConfigSelect = recordRobotConfigForm.querySelector("#robotConfigSelect");
 
+    const evalRobotConfigForm = document.getElementById("evalConfigForm");
+    const evalRobotConfigSelect = evalRobotConfigForm.querySelector("#robotConfigSelect");
+
     try {
         // Fetch the list of cameras from the backend
         const response = await fetch("/robot/configs-path");
         const configsPath = await response.json();
 
-        // <option>lerobot/configs/robot/so100.yaml</option>
-
         // Clear existing options
         recordRobotConfigSelect.innerHTML = "";
         teleopRobotConfigSelect.innerHTML = "";
+        evalRobotConfigSelect.innerHTML = "";
 
         // Populate the <select> element with options
         configsPath.forEach(path => {
@@ -42,6 +44,11 @@ document.addEventListener("DOMContentLoaded", async () => {
             teleopOption.value = path;
             teleopOption.textContent = path;
             teleopRobotConfigSelect.appendChild(teleopOption);
+
+            const evalOption = document.createElement("option");
+            evalOption.value = path;
+            evalOption.textContent = path;
+            evalRobotConfigSelect.appendChild(evalOption);
         });
 
     } catch (error) {
@@ -250,7 +257,57 @@ document
     } catch (error) {
         console.error("Error fetching configuration data:", error);
     }
-});
+    });
+
+    const evalConfigForm = document.getElementById('evalConfigForm');
+    evalConfigForm.addEventListener('submit', async (event) => {
+        console.log("sending eval config form");
+        event.preventDefault(); // Prevent the default form submission
+        const formData = new FormData(evalConfigForm);
+        const response = await fetch(evalConfigForm.action, {
+            method: evalConfigForm.method,
+            body: formData
+        });
+        if (response.ok) {
+            alert('Configuration Updated Successfully!');
+        } else {
+            alert('Error updating configuration!');
+        }
+    });
+
+    document.addEventListener("DOMContentLoaded", async () => {
+    const form = document.getElementById("evalConfigForm");
+
+    try {
+        // Fetch data from the backend
+        const response = await fetch("/robot/eval/get-config");
+        const data = await response.json();
+
+        // Map backend data to form fields
+        form.robotConfigSelect.value = data.robot_config;
+        form.evalPolicyPath.value = data.pretrained_policy_path;
+        form.evalRecordEpisodes.checked = data.record_eval_episodes;
+        form.evalPushToHub.checked = data.push_to_hub;
+
+        form.evalRoot.value = data.root;
+        form.evalRepoID.value = data.repo_id;
+        form.evalTags.value = data.tags;
+        form.evalFPS.value = data.fps;       
+
+        // Handle time and episode inputs
+        form.evalEpisodeTime.value = data.episode_time_s;
+        form.evalNumEpisodes.value = data.num_episodes;
+        form.evalWarmupTime.value = data.warmup_time_s;
+
+        // Handle image writer settings
+        form.evalImageWriterProcesses.value = data.num_image_writer_processes;
+        form.evalImageWriterThreads.value = data.num_image_writer_threads_per_camera;
+        form.evalSingleTask.value = data.single_task;
+
+    } catch (error) {
+        console.error("Error fetching configuration data:", error);
+    }
+    });
 
     function startStreaming() {
     const eventSource = new EventSource("/stream");

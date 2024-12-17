@@ -52,7 +52,10 @@
                   <button class="nav-link" id="teleop-tab" data-bs-toggle="tab" data-bs-target="#teleop-tab-pane" type="button" role="tab" aria-controls="teleop-tab-pane" aria-selected="true">Teleop</button>
                 </li>
                 <li class="nav-item" role="presentation">
-                  <button class="nav-link active" id="record-tab" data-bs-toggle="tab" data-bs-target="#record-tab-pane" type="button" role="tab" aria-controls="record-tab-pane" aria-selected="false">Record</button>
+                  <button class="nav-link" id="record-tab" data-bs-toggle="tab" data-bs-target="#record-tab-pane" type="button" role="tab" aria-controls="record-tab-pane" aria-selected="false">Record</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                  <button class="nav-link active" id="eval-tab" data-bs-toggle="tab" data-bs-target="#eval-tab-pane" type="button" role="tab" aria-controls="eval-tab-pane" aria-selected="false">Evaluate</button>
                 </li>
                 <li class="nav-item" role="presentation">
                   <button class="nav-link" id="replay-tab" data-bs-toggle="tab" data-bs-target="#replay-tab-pane" type="button" role="tab" aria-controls="replay-tab-pane" aria-selected="false" disabled>Replay</button>
@@ -117,7 +120,7 @@
                 </div>
                 
                 <!-- record controls tab-->
-                <div class="tab-pane fade show active" id="record-tab-pane" role="tabpanel" aria-labelledby="record-tab" tabindex="1">
+                <div class="tab-pane fade" id="record-tab-pane" role="tabpanel" aria-labelledby="record-tab" tabindex="1">
                   <div class="container">
 
                     <!-- record control buttons -->
@@ -243,10 +246,114 @@
                     </div>
                   </div>
                 </div>
+
+                <div class="tab-pane fade show active" id="eval-tab-pane" role="tabpanel" aria-labelledby="eval-tab" tabindex="2">
+
+                  <!-- eval control buttons -->
+                  <div class="card" style="background-color: var(--bs-gray-800)!important">
+                    <h6 class="card-header p-3">Mode Controls</h6>
+                    <div class="card-body">  
+                      <button class="btn btn-primary me-2" id="startEvalBtn"><i class="bi bi-arrow-repeat"></i> Start Evaluation</button>
+                      <button class="btn btn-danger me-2" id="stopEvalBtn"><i class="bi bi-ban"></i> Stop Evaluation</button>
+
+                    </div>
+                  </div>
+
+                  <!-- eval configuration -->
+                  <div class="accordion mt-lg-4" id="evalAccordian">
+    
+                    <div class="accordion-item">
+  
+                      <h2 class="accordion-header">
+                        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseEvalTab" aria-expanded="true" aria-controls="collapseEvalTab">
+                          Config
+                        </button>
+                      </h2>
+  
+                      <div id="collapseEvalTab" class="accordion-collapse collapse" data-bs-parent="#evalAccordian">
+                        <div class="accordion-body" style="background-color: var(--bs-gray-800)!important">
+  
+                          <!-- configs -->
+                          <form id="evalConfigForm" action="/robot/eval/config-update" method="post">
+  
+                            <div class="mb-3">
+                              <label for="robotConfigSelect" class="form-label">Robot Config File</label>
+                              <select id="robotConfigSelect" class="form-select" name="robot_config"></select>
+                            </div>   
+
+                            <label for="evalPolicyPath" class="form-label">Pretrained Policy Path</label>
+                            <input type="text" id="evalPolicyPath" name="policy_path" class="form-control" aria-describedby="recordHelpline" value="">
+                            <div id="evalPolicyPathHelpBlock" class="form-text">
+                              e.g - outputs/train/act_so100_test/checkpoints/last/pretrained_model
+                            </div>
+                            
+                            <hr>
+
+                            <div class="container mb-2 d-flex flex-wrap">
+
+                              <div class="form-check form-switch me-2">
+                                <input class="form-check-input" name="record_episodes" type="checkbox" role="switch" id="evalRecordEpisodes">
+                                <label class="form-check-label" for="evalRecordEpisodes">Record Eval Episodes</label>
+                              </div>
+  
+                              <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" name="push_to_hub" type="checkbox" role="switch" id="evalPushToHub">
+                                <label class="form-check-label" for="evalPushToHub">Push To Hub</label>
+                              </div>
+  
+                            </div> 
+  
+                            <label for="evalRoot" class="form-label">Root Dir</label>
+                            <input type="text" id="evalRoot" name="root_dir" class="form-control" aria-describedby="evalHelpline" value="data/eval_test">
+
+                            <label for="evalRepoID" class="form-label mt-2">Repo ID</label>
+                            <input type="text" id="evalRepoID" name="repo_id" class="form-control" aria-describedby="evalHelpline" value="data/eval_test">
+  
+                            <label for="evalTags" class="form-label mt-2">Tags</label>
+                            <input type="text" id="evalTags" name="tags" class="form-control" aria-describedby="evalHelpline" value="">
+  
+                            <label for="evalSingleTask" class="form-label mt-2">Single Task Desc</label>
+                            <input type="text" id="evalSingleTask" name="single_task" class="form-control" aria-describedby="evalHelpline" value="">
+  
+                            <label for="evalNumEpisodes" class="form-label mt-2">Num Episodes</label>
+                            <input type="number" id="evalNumEpisodes" name="num_episodes" class="form-control" aria-describedby="number of episodes" value="50">
+                            
+                            <label for="evalWarmupTime" class="form-label mt-2">Warmup Time</label>
+                            <input type="number" id="evalWarmupTime" name="warmup_time_s" class="form-control" aria-describedby="warmup time" value="5">
+                            
+                            <hr>                            
+  
+                            <div class="input-group mb-3">
+                              <span class="input-group-text">Max Episode Time</span>
+                              <input type="number" class="form-control" id="evalEpisodeTime" name="episode_time_s" value="40" aria-label="episode time">
+                              <span class="input-group-text">FPS</span>
+                              <input type="number" class="form-control" id="evalFPS" name="fps" value="30" aria-label="frames per second">
+                            </div>
+  
+                            
+  
+                            <div class="input-group mb-3">
+                              <span class="input-group-text">Image Writer Processes</span>
+                              <input type="number" class="form-control" id="evalImageWriterProcesses" name="num_image_writer_processes" value="0" aria-label="number of processes for image writer">
+                              <span class="input-group-text">Writer Threads</span>
+                              <input type="number" class="form-control" id="evalImageWriterThreads" name="num_image_writer_threads_per_camera" value="4" aria-label="number of threads for image writer">
+                            </div>
+  
+  
+                            <button type="submit" class="btn btn-primary">Apply</button>
+  
+                          </form>
+  
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
     
                 <!-- TODO: Implement -->
-                <div class="tab-pane fade" id="replay-tab-pane" role="tabpanel" aria-labelledby="replay-tab" tabindex="0">...</div>
-                <div class="tab-pane fade" id="calibrate-tab-pane" role="tabpanel" aria-labelledby="calibrate-tab" tabindex="0">...</div>
+                <div class="tab-pane fade" id="replay-tab-pane" role="tabpanel" aria-labelledby="replay-tab" tabindex="3">...</div>
+                <div class="tab-pane fade" id="calibrate-tab-pane" role="tabpanel" aria-labelledby="calibrate-tab" tabindex="4">...</div>
 
             </div>
           </div>
