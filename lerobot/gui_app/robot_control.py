@@ -1,4 +1,5 @@
 import cv2
+import numpy as np
 import time
 import threading
 import logging
@@ -37,7 +38,7 @@ class RobotControl:
 
         self.config = config
         self.is_shutdown = False
-        self.cams_image_buffer = {}
+        
 
         self.is_process_active = False
         self.running_threads = {}
@@ -49,11 +50,32 @@ class RobotControl:
             self.events["start_recording"] = False
 
         self.robot = self.init_robot(self.config.robot_cfg_file)  
+        self.cams_image_buffer = self.init_cam_image_buffers()
 
         # self.dataset_image_writer = AsyncImageWriter(
         #     num_processes=self.config.record.num_image_writer_processes,
         #     num_threads=self.config.record.num_image_writer_threads_per_camera * len(self.robot.cameras),
         # ) 
+    
+    def init_cam_image_buffers(self):
+        cams_image_buffers = {}
+
+        w, h = 640, 480
+        no_feed_img = cv2.putText(
+            img=np.zeros((h, w, 3), dtype=np.uint8),
+            text="No feed found!",
+            org=(w // 2 - 150, h // 2),
+            fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+            fontScale=1.2,
+            color=(0, 0, 255),
+            thickness=3, 
+            lineType=cv2.LINE_AA
+        )
+        ret, encoded_no_feed_img = cv2.imencode('.jpg', no_feed_img)
+        for cam_info in self.get_camera_info():
+            cams_image_buffers["observation.images."+str(cam_info["name"])] = encoded_no_feed_img
+        
+        return cams_image_buffers
     
     def init_robot(self, config_path: str):
         logging.info(f"Provided robot config file: {config_path}")
@@ -73,7 +95,7 @@ class RobotControl:
             cam_info.append({
                 "id": cam_id,
                 "name": str(cam_name),
-                "video_url": "/video/observation.images."+str(cam_name)
+                "video_url": "/robot/get-cam-feed/observation.images."+str(cam_name)
             })        
         return cam_info
         
@@ -155,9 +177,12 @@ class RobotControl:
             if events["exit_early"]:
                 logging.info("Early exit triggered. Exiting while loop !!")
                 events["exit_early"] = False
+                self.cams_image_buffer = self.init_cam_image_buffers()
                 break
             
-            if self.check_force_stop(events): return
+            if self.check_force_stop(events): 
+                self.cams_image_buffer = self.init_cam_image_buffers()
+                return
                 
 
     def record(

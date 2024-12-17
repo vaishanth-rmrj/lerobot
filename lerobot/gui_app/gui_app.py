@@ -1,12 +1,8 @@
 import os
 from pathlib import Path
-import cv2
-import numpy as np
-import threading
 import signal
 import logging
 import asyncio
-import time 
 from omegaconf import OmegaConf
 from omegaconf.dictconfig import DictConfig
 
@@ -55,34 +51,22 @@ async def get_robot_config_files_path():
 async def get_cameras():
     return robot_controller.get_camera_info()
 
-def fetch_cam_frame(device_id: str):
-    import time
-    is_warmup_done = False
-    while not SHUTDOWN_APP:
-        try:
-            if robot_controller:
-                if len(robot_controller.cams_image_buffer.keys()) > 0:
-
-                    # warmup to obtain cam feed
-                    if not is_warmup_done:
-                        is_warmup_done = True
-                        time.sleep(2)
-                        
-                    # print(f"cam feed size: {robot_controller.cams_image_buffer[device_id]}")
-                    yield (b'--frame\r\n'
-                        b'Content-Type: image/jpeg\r\n\r\n' + robot_controller.cams_image_buffer[device_id].tobytes() + b'\r\n')
-                else:
-                    blank_img = np.zeros((640, 480, 3))
-                    _, blank_img_encoded = cv2.imencode('.jpg', blank_img)
-                    yield (b'--frame\r\n'
-                        b'Content-Type: image/jpeg\r\n\r\n' + blank_img_encoded.tobytes() + b'\r\n')
-                    
-            time.sleep(0.001)  # Adjust delay as needed
-        except Exception as e:
-            logging.info(f"Error fetching frame: {e} !!")
-
-@app.get("/video/{device_id}")
+@app.get("/robot/get-cam-feed/{device_id}")
 async def get_cam_feed(device_id: str):
+
+    def fetch_cam_frame(device_id: str):
+        global SHUTDOWN_APP
+        import time
+        while not SHUTDOWN_APP:
+            try:
+                if robot_controller:
+                    yield (b'--frame\r\n'
+                            b'Content-Type: image/jpeg\r\n\r\n' + robot_controller.cams_image_buffer[device_id].tobytes() + b'\r\n')
+                        
+                time.sleep(0.001)  # Adjust delay as needed
+            except Exception as e:
+                logging.info(f"Error fetching frame: {e} !!")
+
     try:
         return StreamingResponse(
             fetch_cam_frame(device_id),
@@ -197,18 +181,6 @@ async def cancel_recording():
 @app.get("/record/finish_recording")
 async def finish_recording():
     robot_controller.events["exit_early"] = True
-
-# @app.get('/stream')
-# async def stream_output():
-#     async def event_generator():
-#         while not SHUTDOWN_APP:  # Only stream while should_stream is True
-#             if not output_queue.empty():
-#                 yield {'data': await output_queue.get()}
-#             await asyncio.sleep(0.1)
-#         # Send a final message to indicate stream end
-#         yield {'data': '--- Streaming ended ---'}
-
-#     return EventSourceResponse(event_generator())
 
 @app.get("/robot/eval/get-config")
 async def get_config():
