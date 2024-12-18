@@ -279,6 +279,7 @@ class RobotControl:
             robot.teleop_safety_stop()
 
         recorded_episodes = 0
+        num_episodes -= dataset.num_episodes
         while True:
             if recorded_episodes >= num_episodes:
                 break            
