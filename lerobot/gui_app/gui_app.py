@@ -3,10 +3,10 @@ from pathlib import Path
 import signal
 import logging
 import asyncio
+from typing import Dict, List, Optional
+
 from omegaconf import OmegaConf
 from omegaconf.dictconfig import DictConfig
-
-from typing import Dict, List, Optional
 
 from fastapi import FastAPI, Form
 from fastapi.staticfiles import StaticFiles
@@ -16,10 +16,19 @@ import uvicorn
 # project imports
 from lerobot.common.utils.utils import init_hydra_config
 from lerobot.gui_app.robot_control import RobotControl
-from lerobot.gui_app.utils import init_logging, compare_configs
+from lerobot.gui_app.utils import (
+    init_logging, 
+    compare_configs, 
+    cache_config,
+    load_config
+)
 
 SHUTDOWN_APP = False
 DEFAULT_APP_CONFIG_PATH = "lerobot/gui_app/configs/mode_cfg.yaml"
+
+#  global vars
+robot_controller = None
+log_list_handler = None
 
 app = FastAPI()
 app.mount(
@@ -30,13 +39,8 @@ app.mount(
     name='static'
 )
 
-def cache_config(config: DictConfig, dir:str =".cache"):
-    cache_dir = (Path(__file__).resolve().parent / ".cache").resolve()
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    cache_file = cache_dir / "mode_cfg.yaml"
-    OmegaConf.save(config, cache_file)    
-    logging.info(f"Config cached to: {cache_file}")
 
+#### common api ####
 @app.get("/")
 async def redirect_to_control_panel():
     return RedirectResponse(url="/static/control_panel.html")
@@ -98,6 +102,7 @@ async def stop_robot():
     else:
         return {"status": "fail"}
 
+#### teleop api ####
 @app.post("/telop/config-update")
 async def update_teleop_config(robot_config: str = Form(...), fps: int = Form(...)):
 
@@ -112,6 +117,8 @@ async def update_teleop_config(robot_config: str = Form(...), fps: int = Form(..
         if active_threads: robot_controller.stop_threads()
         robot_controller.config.teleop.fps = fps
 
+
+#### record api ####
 @app.get("/record/get-config")
 async def get_config():
     record_dict_cfg = OmegaConf.to_container(robot_controller.config.record, resolve=True)
@@ -255,22 +262,18 @@ def handle_interrupt(signum, frame):
     SHUTDOWN_APP = True
     robot_controller.stop_threads()
 
-if __name__ == "__main__":   
 
+def run_web_app():
+    global robot_controller, log_list_handler
     # init logging and capture the custom list handler
-    log_list_handler = init_logging()    
-
-    # init app config
-    cache_dir = (Path(__file__).resolve().parent / ".cache" / "mode_cfg.yaml").resolve()
-    if cache_dir.exists():
-        logging.info("App cache found. Loading config from cache.")        
-        app_cfg = init_hydra_config(cache_dir)
-    else:
-        app_cfg = init_hydra_config(DEFAULT_APP_CONFIG_PATH)    
+    log_list_handler = init_logging()   
+    # load config / cache
+    cfg = load_config()     
     
-    robot_controller = RobotControl(
-        config=app_cfg
-    )   
+    robot_controller = RobotControl(config=cfg)   
     
     signal.signal(signal.SIGINT, handle_interrupt)
     uvicorn.run(app, host="0.0.0.0", port=8000, timeout_keep_alive=2)
+
+if __name__ == "__main__":   
+    run_web_app()    
