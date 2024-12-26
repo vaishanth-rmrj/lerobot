@@ -12,7 +12,7 @@ document.getElementById("startRecordSessionBtn")
 document.getElementById("stopRecordSessionBtn")
 .addEventListener("click", async () => {
     try {
-        await fetch("/stop", { method: "GET" });
+        await fetch("/robot/stop", { method: "GET" });
     } catch (error) {
         console.error("Error stopping record session:", error);
     }
@@ -21,7 +21,7 @@ document.getElementById("stopRecordSessionBtn")
 document.getElementById("startRecordBtn")
 .addEventListener("click", async () => {
     try {
-        await fetch("/record/start_recording", { method: "GET" });
+        await fetch("/robot/record/event/start", { method: "GET" });
     } catch (error) {
         console.error("Error recording:", error);
     }
@@ -30,7 +30,7 @@ document.getElementById("startRecordBtn")
 document.getElementById("finishRecordBtn")
 .addEventListener("click", async () => {
     try {
-        await fetch("/record/finish_recording", { method: "GET" });
+        await fetch("/robot/record/event/finish", { method: "GET" });
     } catch (error) {
         console.error("Error finishing recording:", error);
     }
@@ -39,7 +39,7 @@ document.getElementById("finishRecordBtn")
 document.getElementById("cancelRecordBtn")
 .addEventListener("click", async () => {
     try {
-        await fetch("/record/cancel_recording", { method: "GET" });
+        await fetch("/robot/record/event/cancel", { method: "GET" });
     } catch (error) {
         console.error("Error cancelling recording:", error);
     }
@@ -70,7 +70,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     try {
         // fetch data from the backend
-        const response = await fetch("/record/get-config");
+        const response = await fetch("/robot/get-control-config/record");
         const data = await response.json();
 
         // map backend data to form fields

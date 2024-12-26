@@ -12,7 +12,7 @@ document.getElementById("startEvalBtn")
 document.getElementById("stopEvalBtn")
 .addEventListener("click", async () => {
     try {
-        await fetch("/stop", { method: "GET" });
+        await fetch("/robot/stop", { method: "GET" });
     } catch (error) {
         console.error("Error stopping eval session:", error);
     }
@@ -40,7 +40,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
     try {
         // fetch data from the backend
-        const response = await fetch("/robot/eval/get-config");
+        const response = await fetch("/robot/get-control-config/eval");
         const data = await response.json();
 
         // map backend data to form fields

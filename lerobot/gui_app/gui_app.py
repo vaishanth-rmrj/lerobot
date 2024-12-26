@@ -6,7 +6,6 @@ import asyncio
 from typing import Dict, List, Optional
 
 from omegaconf import OmegaConf
-from omegaconf.dictconfig import DictConfig
 
 from fastapi import FastAPI, Form
 from fastapi.staticfiles import StaticFiles
@@ -14,21 +13,17 @@ from fastapi.responses import StreamingResponse, RedirectResponse
 import uvicorn
 
 # project imports
-from lerobot.common.utils.utils import init_hydra_config
 from lerobot.gui_app.robot_control import RobotControl
 from lerobot.gui_app.utils import (
     init_logging, 
-    compare_configs, 
-    cache_config,
-    load_config
+    load_config,
+    compare_update_cache_config
 )
-
-SHUTDOWN_APP = False
-DEFAULT_APP_CONFIG_PATH = "lerobot/gui_app/configs/mode_cfg.yaml"
 
 #  global vars
 robot_controller = None
 log_list_handler = None
+is_shutdown = False
 
 app = FastAPI()
 app.mount(
@@ -59,9 +54,9 @@ async def get_cameras():
 async def get_cam_feed(device_id: str):
 
     def fetch_cam_frame(device_id: str):
-        global SHUTDOWN_APP
+        global is_shutdown
         import time
-        while not SHUTDOWN_APP:
+        while not is_shutdown:
             try:
                 if robot_controller:
                     yield (b'--frame\r\n'
@@ -93,8 +88,18 @@ async def select_control_mode(mode: str):
         return {"status": "success"}
     else:
         return {"status": "fail"}
+    
+@app.get("/robot/stream-logs")
+async def stream():
+    async def event_generator():
+        while not is_shutdown:   
+            if len(log_list_handler.log_list):  
+                yield f"data: {log_list_handler.log_list.pop(0)}\n\n"
+            await asyncio.sleep(0.001)
 
-@app.get("/stop")
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+@app.get("/robot/stop")
 async def stop_robot():
     success = robot_controller.stop_threads()
     if success:        
@@ -102,30 +107,49 @@ async def stop_robot():
     else:
         return {"status": "fail"}
 
+@app.get("/robot/get-control-config/{mode}")
+async def get_config(mode:str):
+    mode = mode.lower()
+
+    config = None
+    if mode == "teleop":
+        config = robot_controller.config.teleop
+    elif mode == "record":
+        config = robot_controller.config.record
+    elif mode == "eval":
+        config = robot_controller.config.eval
+    elif mode == "replay":
+        raise NotImplementedError("Relay Config fetch not implemented !!!")
+    elif mode == "calibrate":
+        raise NotImplementedError("Calibrate Config fetch not implemented !!!")
+    else:
+        logging.warning(f"Unkown config mode triggered in backend: {mode}")
+        return {"error": f"Invalid mode: {mode}"}
+    
+    record_dict_cfg = OmegaConf.to_container(config, resolve=True)
+    record_dict_cfg['robot_config'] = robot_controller.config.robot_cfg_file
+    return record_dict_cfg    
+
+
+
 #### teleop api ####
-@app.post("/telop/config-update")
+@app.post("/robot/telop/config-update")
 async def update_teleop_config(robot_config: str = Form(...), fps: int = Form(...)):
 
-    active_threads = len(robot_controller.running_threads)
-    if not robot_controller.config.robot_cfg_file == robot_config:
-        logging.info("Robot configuration changed")
-        robot_controller.config.robot_cfg_file = robot_config
-        if active_threads: robot_controller.stop_threads()
-        robot_controller.init_robot(robot_config)
-
-    if not robot_controller.config.teleop.fps == fps:
-        if active_threads: robot_controller.stop_threads()
-        robot_controller.config.teleop.fps = fps
+    new_teleop_config = {
+        "fps": fps,
+    }
+    compare_update_cache_config(
+        prev_config = robot_controller.config.teleop, 
+        new_config = new_teleop_config, 
+        new_robot_config = robot_config, 
+        controller = robot_controller,
+        mode="teleop",
+    )
 
 
 #### record api ####
-@app.get("/record/get-config")
-async def get_config():
-    record_dict_cfg = OmegaConf.to_container(robot_controller.config.record, resolve=True)
-    record_dict_cfg['robot_config'] = robot_controller.config.robot_cfg_file
-    return record_dict_cfg
-
-@app.post("/record/config-update")
+@app.post("/robot/record/config-update")
 async def update_record_config(
         robot_config: str = Form(...), 
         root_dir: str = Form(...), 
@@ -158,37 +182,41 @@ async def update_record_config(
         "num_image_writer_threads_per_camera": num_image_writer_threads_per_camera,
         "single_task": single_task,
     }
+    compare_update_cache_config(
+        prev_config = robot_controller.config.record, 
+        new_config = new_record_config, 
+        new_robot_config = robot_config, 
+        controller = robot_controller,
+        mode="record",
+    )
 
-    diff = compare_configs(new_record_config, robot_controller.config.record)
-    active_threads = len(robot_controller.running_threads)
+@app.get("/robot/record/event/{event}")
+async def update_record_event(event:str):
+    """
+    endpoint to update robot recording events based on input.
+        - valid events: 'start', 'finish', 'cancel'.
+    """
+    event = event.lower()
 
-    if not robot_controller.config.robot_cfg_file == robot_config:
-        logging.info("Robot configuration changed")
-        robot_controller.config.robot_cfg_file = robot_config
-        if active_threads: robot_controller.stop_threads()
-        robot_controller.init_robot(robot_config)
+    if event == "start":
+        robot_controller.events["start_recording"] = True
 
-    if len(diff.keys()) > 0:
-        if active_threads: robot_controller.stop_threads()
-        logging.info(f"Modified Configs: {diff}")
-        robot_controller.config.record = OmegaConf.create(new_record_config)
-        logging.info(f"Updated Configs: {robot_controller.config.record}")    
+    elif event == "finish":
+        robot_controller.events["exit_early"] = True
 
-    cache_config(robot_controller.config)
+    elif event == "cancel":
+        robot_controller.events["rerecord_episode"] = True
+        robot_controller.events["exit_early"] = True
+    
+    else:
+        logging.warning(f"Unkown record event triggered in backend: {event}")
+        return {"error": f"Invalid event: {event}"}
+    
+    return {"status": "success", "event": event}
 
-@app.get("/record/start_recording")
-async def start_recording():
-    robot_controller.events["start_recording"] = True
 
-@app.get("/record/cancel_recording")
-async def cancel_recording():
-    robot_controller.events["rerecord_episode"] = True
-    robot_controller.events["exit_early"] = True
 
-@app.get("/record/finish_recording")
-async def finish_recording():
-    robot_controller.events["exit_early"] = True
-
+#### eval api ####
 @app.get("/robot/eval/get-config")
 async def get_config():
     eval_dict_cfg = OmegaConf.to_container(robot_controller.config.eval, resolve=True)
@@ -228,40 +256,19 @@ async def update_record_config(
         "num_image_writer_threads_per_camera": num_image_writer_threads_per_camera,
         "single_task": single_task,
     }
-
-    diff = compare_configs(new_eval_config, robot_controller.config.eval)
-    active_threads = len(robot_controller.running_threads)
-
-    if not robot_controller.config.robot_cfg_file == robot_config:
-        logging.info("Robot configuration changed")
-        robot_controller.config.robot_cfg_file = robot_config
-        if active_threads: robot_controller.stop_threads()
-        robot_controller.init_robot(robot_config)
-
-    if len(diff.keys()) > 0:
-        if active_threads: robot_controller.stop_threads()
-        logging.info(f"Modified Configs: {diff}")
-        robot_controller.config.eval = OmegaConf.create(new_eval_config)
-        logging.info(f"Updated Configs: {robot_controller.config.eval}")    
-
-    cache_config(robot_controller.config)
-
-@app.get("/stream")
-async def stream():
-    async def event_generator():
-        while not SHUTDOWN_APP:   
-            if len(log_list_handler.log_list):  
-                yield f"data: {log_list_handler.log_list.pop(0)}\n\n"
-            await asyncio.sleep(0.001)
-
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
+    compare_update_cache_config(
+        prev_config = robot_controller.config.eval, 
+        new_config = new_eval_config, 
+        new_robot_config = robot_config, 
+        controller = robot_controller,
+        mode="eval",
+    )
 
 def handle_interrupt(signum, frame):
-    global SHUTDOWN_APP    
+    global is_shutdown    
     logging.info("Interrupt received, terminating app !!")
-    SHUTDOWN_APP = True
+    is_shutdown = True
     robot_controller.stop_threads()
-
 
 def run_web_app():
     global robot_controller, log_list_handler

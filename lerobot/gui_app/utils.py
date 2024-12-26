@@ -1,12 +1,14 @@
 import logging
 from datetime import datetime
 from pathlib import Path
+from typing import Dict
 
 from omegaconf import OmegaConf
 from omegaconf.dictconfig import DictConfig
 
 # project imports
 from lerobot.common.utils.utils import init_hydra_config
+from lerobot.gui_app.robot_control import RobotControl
 
 # Custom handler to store logs in a list
 class ListHandler(logging.Handler):
@@ -66,7 +68,7 @@ def cache_config(config: DictConfig, dir_name:str ="gui_app", filename:str = "mo
     OmegaConf.save(config, cache_file)    
     logging.info(f"Config cached to: {cache_file}")
 
-def compare_configs(dict_config, hydra_config):
+def check_config_change(dict_config:Dict, hydra_config:DictConfig):
     """
     Compare a plain dictionary with a Hydra config object and return changes.
 
@@ -114,3 +116,49 @@ def load_config(config_path:str = "lerobot/gui_app/configs/mode_cfg.yaml", load_
 
     cfg = init_hydra_config(config_path) 
     return cfg
+
+def compare_update_cache_config(
+        prev_config: DictConfig, 
+        new_config:Dict, 
+        new_robot_config:str, 
+        controller:RobotControl, 
+        mode:str
+    ) -> None:
+    """
+    Compare config updates from GUI and cache it to permanent memory
+    Args:
+        prev_config (DictConfig): config from previous session
+        new_config (Dict): updated config
+        new_robot_config (str): updated robot config path
+        controller (RobotControl)
+        mode (str): control mode type
+    """
+    updated_attrs = check_config_change(new_config, prev_config)
+    active_threads = len(controller.running_threads)
+
+    if not controller.config.robot_cfg_file == new_robot_config:
+        logging.info("Robot configuration changed")
+        controller.config.robot_cfg_file = new_robot_config
+        if active_threads: controller.stop_threads()
+        controller.init_robot(new_robot_config)
+
+    if len(updated_attrs.keys()) > 0:
+        if active_threads: controller.stop_threads()
+
+        if mode == "teleop":
+            controller.config.teleop = OmegaConf.create(new_config)  
+        elif mode == "record":
+            controller.config.record = OmegaConf.create(new_config)  
+        elif mode == "eval":
+            controller.config.eval = OmegaConf.create(new_config)  
+        elif mode == "replay":
+            raise NotImplementedError("Relay Config update not implemented !!!")
+        elif mode == "calibrate":
+            raise NotImplementedError("Calibrate Config update not implemented !!!")
+        else:
+            logging.warning(f"Unkown config mode triggered in backend: {mode}")
+            return {"error": f"Invalid mode: {mode}"}        
+
+        logging.info(f"Updated Configs: {controller.config}") 
+
+    cache_config(controller.config)

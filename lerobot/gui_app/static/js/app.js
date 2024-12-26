@@ -93,7 +93,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 function streamLogs() {
-    const eventSource = new EventSource("/stream");
+    const eventSource = new EventSource("/robot/stream-logs");
     const logsDisplay = document.getElementById("logsDisplay");
 
     eventSource.onmessage = function(event) {
