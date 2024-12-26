@@ -1,0 +1,48 @@
+<div class="container">
+    
+    <!-- teleop control buttons -->
+    <div class="card" style="background-color: var(--bs-gray-800)!important">
+        <h6 class="card-header p-3">Mode Controls</h6>
+        <div class="card-body">  
+          <button class="btn btn-primary me-2" id="startTeleopBtn"><i class="bi bi-arrow-repeat"></i> Start Teleop</button>
+          <button class="btn btn-danger me-2" id="stopTeleopBtn"><i class="bi bi-ban"></i> Stop Teleop</button>
+
+        </div>
+    </div>
+
+    <!-- teleop configuration -->
+    <div class="accordion mt-lg-4" id="teleopAccordians">
+      <div class="accordion-item">
+        <h2 class="accordion-header">
+          <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
+            Config
+          </button>
+        </h2>
+        <div id="collapseOne" class="accordion-collapse collapse" data-bs-parent="#teleopAccordians">
+          <div class="accordion-body" style="background-color: var(--bs-gray-800)!important">
+
+            <!-- configs -->
+            <form id="teleopConfigForm" action="/robot/telop/config-update" method="post">
+
+              <div class="mb-3">
+                <label for="robotConfigSelect" class="form-label">Robot Config File</label>
+                <select id="robotConfigSelect" class="form-select" name="robot_config"></select>
+              </div>
+
+              <div class="row g-3 align-items-center mb-3">
+                <div class="col-auto">
+                  <label for="teleopFPS" class="col-form-label">FPS</label>
+                </div>
+                <div class="col-auto">
+                  <input type="number" id="teleopFPS" name="fps" class="form-control" aria-describedby="teleopHelpInline" value=30>
+                </div>
+              </div>
+
+              <button type="submit" class="btn btn-primary">Apply</button>
+            </form>
+
+          </div>
+        </div>
+      </div>                        
+    </div>
+</div>

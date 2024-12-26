@@ -1,5 +1,11 @@
 // js for common app funcs
 
+// enable tooltips
+const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+tooltipTriggerList.forEach(t => {
+    new bootstrap.Tooltip(t);
+})
+
 document.addEventListener("DOMContentLoaded", async () => {
 
     const teleopRobotConfigForm = document.getElementById("teleopConfigForm");
