@@ -25,7 +25,7 @@
           <strong>LeRobot Control Panel</strong>
         </a>
 
-        <button class="btn btn-warning" id="resetRobotBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="Reset robot instance">
+        <button class="btn btn-outline-warning" id="resetRobotBtn" data-bs-toggle="tooltip" data-bs-placement="bottom" data-bs-title="Reset robot instance">
           <i class="bi bi-robot"></i>
         </button>
       </div>
@@ -52,26 +52,26 @@
 
             <ul class="nav nav-tabs mb-3" id="myTab" role="tablist">
                 <li class="nav-item " role="presentation">
-                  <button class="nav-link" id="teleop-tab" data-bs-toggle="tab" data-bs-target="#teleop-tab-pane" type="button" role="tab" aria-controls="teleop-tab-pane" aria-selected="true">Teleop</button>
+                  <button class="nav-link active" id="teleop-tab" data-bs-toggle="tab" data-bs-target="#teleop-tab-pane" type="button" role="tab" aria-controls="teleop-tab-pane" aria-selected="true" style="font-weight: bold;">Teleop</button>
                 </li>
                 <li class="nav-item" role="presentation">
-                  <button class="nav-link" id="record-tab" data-bs-toggle="tab" data-bs-target="#record-tab-pane" type="button" role="tab" aria-controls="record-tab-pane" aria-selected="false">Record</button>
+                  <button class="nav-link" id="record-tab" data-bs-toggle="tab" data-bs-target="#record-tab-pane" type="button" role="tab" aria-controls="record-tab-pane" aria-selected="false" style="font-weight: bold;">Record</button>
                 </li>
                 <li class="nav-item" role="presentation">
-                  <button class="nav-link active" id="eval-tab" data-bs-toggle="tab" data-bs-target="#eval-tab-pane" type="button" role="tab" aria-controls="eval-tab-pane" aria-selected="false">Evaluate</button>
+                  <button class="nav-link" id="eval-tab" data-bs-toggle="tab" data-bs-target="#eval-tab-pane" type="button" role="tab" aria-controls="eval-tab-pane" aria-selected="false" style="font-weight: bold;">Evaluate</button>
                 </li>
                 <li class="nav-item" role="presentation">
-                  <button class="nav-link" id="replay-tab" data-bs-toggle="tab" data-bs-target="#replay-tab-pane" type="button" role="tab" aria-controls="replay-tab-pane" aria-selected="false" disabled>Replay</button>
+                  <button class="nav-link" id="replay-tab" data-bs-toggle="tab" data-bs-target="#replay-tab-pane" type="button" role="tab" aria-controls="replay-tab-pane" aria-selected="false" disabled style="font-weight: bold;">Replay</button>
                 </li>
                 <li class="nav-item" role="presentation">
-                  <button class="nav-link" id="calibrate-tab" data-bs-toggle="tab" data-bs-target="#calibrate-tab-pane" type="button" role="tab" aria-controls="calibrate-tab-pane" aria-selected="false" disabled>Calibrate</button>
+                  <button class="nav-link" id="calibrate-tab" data-bs-toggle="tab" data-bs-target="#calibrate-tab-pane" type="button" role="tab" aria-controls="calibrate-tab-pane" aria-selected="false" disabled style="font-weight: bold;">Calibrate</button>
                 </li>
             </ul>
 
             <div class="tab-content" id="myTabContent">
     
                 <!-- teleop controls tab-->
-                <div class="tab-pane fade" id="teleop-tab-pane" role="tabpanel" aria-labelledby="teleop-tab" tabindex="0">
+                <div class="tab-pane fade show active" id="teleop-tab-pane" role="tabpanel" aria-labelledby="teleop-tab" tabindex="0">
                   {% include 'teleop.html' %}
                 </div>
                 
@@ -80,7 +80,7 @@
                   {% include 'record.html' %}
                 </div>
 
-                <div class="tab-pane fade show active" id="eval-tab-pane" role="tabpanel" aria-labelledby="eval-tab" tabindex="2">
+                <div class="tab-pane fade" id="eval-tab-pane" role="tabpanel" aria-labelledby="eval-tab" tabindex="2">
                   {% include 'eval.html' %}
                 </div>
     

@@ -7,9 +7,10 @@ from typing import Dict, List, Optional
 
 from omegaconf import OmegaConf
 
-from fastapi import FastAPI, Form
+from fastapi import FastAPI, Form, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import StreamingResponse, RedirectResponse
+from fastapi.responses import StreamingResponse, RedirectResponse, HTMLResponse
+from fastapi.templating import Jinja2Templates
 import uvicorn
 
 # project imports
@@ -34,12 +35,14 @@ app.mount(
     name='static'
 )
 
+# templates directory
+templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), 'templates'))
 
 #### common api ####
-@app.get("/")
-async def redirect_to_control_panel():
-    return RedirectResponse(url="/static/control_panel.html")
-
+@app.get("/", response_class=HTMLResponse)
+async def read_control_panel(request: Request):
+    return templates.TemplateResponse("control_panel.html", {"request": request})
+    
 @app.get("/robot/configs-path")
 async def get_robot_config_files_path():
     configs_dir = (Path(__file__).resolve().parent / ".." / "configs/robot").resolve()

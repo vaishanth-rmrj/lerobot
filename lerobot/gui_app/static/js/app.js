@@ -64,6 +64,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             const card = document.createElement("div");
             card.className = "card m-4";
             card.style.width = "320px";
+            card.style.backgroundColor = "var(--bs-gray-800)!important";
 
             // card body
             const cardBody = document.createElement("div");
@@ -71,6 +72,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             const cardText = document.createElement("p");
             cardText.className = "card-text";
             cardText.textContent = camera.name;
+            cardText.style.fontStyle = "italic";
             cardBody.appendChild(cardText);
 
             // add the video/image element
