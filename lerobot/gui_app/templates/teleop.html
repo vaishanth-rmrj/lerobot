@@ -3,19 +3,26 @@
     <!-- teleop control buttons -->
     <div class="card" style="background-color: var(--bs-gray-800)!important">
         <h6 class="card-header p-3">Mode Controls</h6>
-        <div class="card-body">  
-          <button class="btn btn-primary me-2" id="startTeleopBtn"><i class="bi bi-arrow-repeat"></i> Start Teleop</button>
-          <button class="btn btn-danger me-2" id="stopTeleopBtn"><i class="bi bi-ban"></i> Stop Teleop</button>
+        <div class="card-body pt-4 pb-4">  
+          <button class="btn btn-primary me-2" id="startTeleopBtn" data-bs-title="Start teleop control loop" data-bs-toggle="tooltip" data-bs-placement="bottom">
+            <i class="bi bi-arrow-repeat"></i> 
+            Start Teleop
+          </button>
+          
+          <button class="btn btn-danger me-2" id="stopTeleopBtn" data-bs-title="Stop teleop control loop" data-bs-toggle="tooltip" data-bs-placement="bottom">
+            <i class="bi bi-ban"></i> 
+            Stop Teleop
+          </button>
 
         </div>
     </div>
 
     <!-- teleop configuration -->
-    <div class="accordion mt-lg-4" id="teleopAccordians">
+    <div class="accordion mt-4" id="teleopAccordians">
       <div class="accordion-item">
         <h2 class="accordion-header">
-          <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
-            Config
+          <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne" style="background-color: var(--bs-gray-800)!important">
+            <h6 class="card-header">Configurations</h6>
           </button>
         </h2>
         <div id="collapseOne" class="accordion-collapse collapse" data-bs-parent="#teleopAccordians">
@@ -25,16 +32,20 @@
             <form id="teleopConfigForm" action="/robot/telop/config-update" method="post">
 
               <div class="mb-3">
-                <label for="robotConfigSelect" class="form-label">Robot Config File</label>
+                <label for="robotConfigSelect" class="form-label">Robot Config</label>
                 <select id="robotConfigSelect" class="form-select" name="robot_config"></select>
+                <small class="form-text">Path to robot config file</small>
               </div>
 
               <hr>
 
               <label for="teleopFPS" class="form-label mt-2">FPS</label>
               <input type="number" id="teleopFPS" name="fps" class="form-control" aria-describedby="teleopHelpInline" value="30">
-
-              <button type="submit" class="btn btn-primary mt-4">Apply</button>
+              <small class="form-text">Frames per second to perform teleop</small>
+              
+              <div class="d-grid gap-2 col-6 mx-auto mt-4">
+                <button type="submit" class="btn btn-warning">Apply</button>
+              </div>
             </form>
 
           </div>

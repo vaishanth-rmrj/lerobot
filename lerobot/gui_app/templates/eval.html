@@ -1,7 +1,7 @@
 <!-- eval control buttons -->
 <div class="card" style="background-color: var(--bs-gray-800)!important">
     <h6 class="card-header p-3">Mode Controls</h6>
-    <div class="card-body">  
+    <div class="card-body pt-4 pb-4">  
       <button class="btn btn-primary me-2" id="startEvalBtn" data-bs-title="Start evaluating trained policy" data-bs-toggle="tooltip" data-bs-placement="bottom">
         <i class="bi bi-arrow-repeat"></i> 
         Start Evaluation
@@ -20,8 +20,8 @@
     <div class="accordion-item">
 
       <h2 class="accordion-header">
-        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseEvalTab" aria-expanded="true" aria-controls="collapseEvalTab">
-          Config
+        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseEvalTab" aria-expanded="true" aria-controls="collapseEvalTab" style="background-color: var(--bs-gray-800)!important">
+          <h6 class="card-header">Configurations</h6>
         </button>
       </h2>
 
@@ -32,15 +32,14 @@
           <form id="evalConfigForm" action="/robot/eval/config-update" method="post">
 
             <div class="mb-3">
-              <label for="robotConfigSelect" class="form-label">Robot Config File</label>
+              <label for="robotConfigSelect" class="form-label">Robot Config</label>
               <select id="robotConfigSelect" class="form-select" name="robot_config"></select>
+              <div class="form-text">Path to robot config file</div>
             </div>   
 
-            <label for="evalPolicyPath" class="form-label">Pretrained Policy Path</label>
+            <label for="evalPolicyPath" class="form-label">Pretrained Policy</label>
             <input type="text" id="evalPolicyPath" name="policy_path" class="form-control" aria-describedby="recordHelpline" value="">
-            <div id="evalPolicyPathHelpBlock" class="form-text">
-              e.g - outputs/train/act_so100_test/checkpoints/last/pretrained_model
-            </div>
+            <div class="form-text">Path to the trained policy. e.g - outputs/train/act_so100_test/checkpoints/last/pretrained_model</div>
             
             <hr>
 
@@ -60,21 +59,27 @@
 
             <label for="evalRoot" class="form-label">Root Dir</label>
             <input type="text" id="evalRoot" name="root_dir" class="form-control" aria-describedby="evalHelpline" value="data/eval_test">
+            <div class="form-text">Root directory where the dataset will be stored (e.g. 'dataset/path')</div>
 
-            <label for="evalRepoID" class="form-label mt-2">Repo ID</label>
+            <label for="evalRepoID" class="form-label mt-4">Repo ID</label>
             <input type="text" id="evalRepoID" name="repo_id" class="form-control" aria-describedby="evalHelpline" value="data/eval_test">
+            <div class="form-text">Dataset identifier. By convention it should match '{hf_username}/{dataset_name}' (e.g. `lerobot/test`)</div>
 
-            <label for="evalTags" class="form-label mt-2">Tags</label>
+            <label for="evalTags" class="form-label mt-4">Tags</label>
             <input type="text" id="evalTags" name="tags" class="form-control" aria-describedby="evalHelpline" value="">
+            <div class="form-text">Add tags to your dataset on the hub</div>
 
-            <label for="evalSingleTask" class="form-label mt-2">Single Task Desc</label>
+            <label for="evalSingleTask" class="form-label mt-4">Single Task Desc</label>
             <input type="text" id="evalSingleTask" name="single_task" class="form-control" aria-describedby="evalHelpline" value="">
+            <div class="form-text">A short but accurate description of the task performed during the recording</div>
 
-            <label for="evalNumEpisodes" class="form-label mt-2">Num Episodes</label>
+            <label for="evalNumEpisodes" class="form-label mt-4">Num Episodes</label>
             <input type="number" id="evalNumEpisodes" name="num_episodes" class="form-control" aria-describedby="number of episodes" value="50">
+            <div class="form-text">Number of episodes to evaluate</div>
             
-            <label for="evalWarmupTime" class="form-label mt-2">Warmup Time</label>
+            <label for="evalWarmupTime" class="form-label mt-4">Warmup Time</label>
             <input type="number" id="evalWarmupTime" name="warmup_time_s" class="form-control" aria-describedby="warmup time" value="5">
+            <div class="form-text">Warmup time before fetching cam feed and joint states</div>
             
             <hr>                            
 
@@ -83,6 +88,9 @@
               <input type="number" class="form-control" id="evalEpisodeTime" name="episode_time_s" value="40" aria-label="episode time">
               <span class="input-group-text">FPS</span>
               <input type="number" class="form-control" id="evalFPS" name="fps" value="30" aria-label="frames per second">
+              <div class="form-text">
+                Max time per episode in seconds within which the episode is to be recorded. Saftey feature implemented to prevent infinite loop execution.FPS to evaluate.
+              </div>
             </div>
 
             
@@ -92,10 +100,14 @@
               <input type="number" class="form-control" id="evalImageWriterProcesses" name="num_image_writer_processes" value="0" aria-label="number of processes for image writer">
               <span class="input-group-text">Writer Threads</span>
               <input type="number" class="form-control" id="evalImageWriterThreads" name="num_image_writer_threads_per_camera" value="4" aria-label="number of threads for image writer">
+              <div class="form-text">
+                Number of subprocesses for saving frames as PNGs. Set to 0 to use threads only; ≥1 to use subprocesses with threads. Recommended: 4 threads per camera with 0 processes. Adjust thread count if FPS is unstable; if still unstable, try using subprocesses.
+              </div>
             </div>
 
-
-            <button type="submit" class="btn btn-primary">Apply</button>
+            <div class="d-grid gap-2 col-6 mx-auto mt-4">
+              <button type="submit" class="btn btn-warning">Apply</button>
+            </div>
 
           </form>
 

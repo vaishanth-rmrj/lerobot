@@ -64,11 +64,14 @@ document.addEventListener("DOMContentLoaded", async () => {
             const card = document.createElement("div");
             card.className = "card m-4";
             card.style.width = "320px";
-            card.style.backgroundColor = "var(--bs-gray-800)!important";
+            card.style.height = "280px";
+            card.style.overflow = "hidden";
 
             // card body
             const cardBody = document.createElement("div");
             cardBody.className = "card-body p-2";
+            cardBody.style.backgroundColor = "var(--bs-gray-800)!important";
+            
             const cardText = document.createElement("p");
             cardText.className = "card-text";
             cardText.textContent = camera.name;
@@ -79,11 +82,8 @@ document.addEventListener("DOMContentLoaded", async () => {
             const cardImg = document.createElement("img");
             cardImg.className = "card-img-bottom";
             cardImg.alt = camera.name;
-
-            cardImg.style.width = "320px";
-            cardImg.style.height = "240px";
-            cardImg.style.background = "#000";
-            cardImg.style.borderRadius = "4px";
+            // cardImg.style.width = "320px";
+            // cardImg.style.height = "240px";
 
             // set the image/video source
             cardImg.src = camera.video_url;

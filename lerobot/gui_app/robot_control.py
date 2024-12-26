@@ -51,11 +51,6 @@ class RobotControl:
 
         self.robot = self.init_robot(self.config.robot_cfg_file)  
         self.cams_image_buffer = self.init_cam_image_buffers()
-
-        # self.dataset_image_writer = AsyncImageWriter(
-        #     num_processes=self.config.record.num_image_writer_processes,
-        #     num_threads=self.config.record.num_image_writer_threads_per_camera * len(self.robot.cameras),
-        # ) 
     
     def init_cam_image_buffers(self):
         cams_image_buffers = {}
@@ -63,12 +58,12 @@ class RobotControl:
         w, h = 640, 480
         no_feed_img = cv2.putText(
             img=np.zeros((h, w, 3), dtype=np.uint8),
-            text="No feed found!",
-            org=(w // 2 - 150, h // 2),
+            text="No feed!",
+            org=(w // 2 - 70, h // 2),
             fontFace=cv2.FONT_HERSHEY_SIMPLEX,
-            fontScale=1.2,
+            fontScale=1.0,
             color=(0, 0, 255),
-            thickness=3, 
+            thickness=2, 
             lineType=cv2.LINE_AA
         )
         ret, encoded_no_feed_img = cv2.imencode('.jpg', no_feed_img)
