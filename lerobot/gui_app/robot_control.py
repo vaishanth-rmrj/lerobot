@@ -4,7 +4,7 @@ import time
 import threading
 import logging
 from pathlib import Path
-from typing import List
+from typing import List, Dict
 
 from omegaconf.dictconfig import DictConfig
 
@@ -32,10 +32,6 @@ class RobotControl:
         ) -> None:
 
         self.config = config
-        self.is_shutdown = False
-        
-
-        self.is_process_active = False
         self.running_threads = {}
 
         self.listener, self.events = init_keyboard_listener()  
@@ -48,6 +44,9 @@ class RobotControl:
         self.cams_image_buffer = self.init_cam_image_buffers()
     
     def init_cam_image_buffers(self):
+        """
+        init cam image buffers
+        """
         cams_image_buffers = {}
 
         w, h = 640, 480
@@ -67,7 +66,16 @@ class RobotControl:
         
         return cams_image_buffers
     
-    def init_robot(self, config_path: str):
+    def init_robot(self, config_path: str)-> Robot:
+        """
+        init robot object from the provided config file using hydra
+
+        Args:
+            config_path (str): path to config file
+
+        Returns:
+            Robot: Manipulator robot object
+        """
         logging.info(f"Provided robot config file: {config_path}")
         robot_cfg = init_hydra_config(config_path)
         if hasattr(self, 'robot'):
@@ -80,6 +88,12 @@ class RobotControl:
         return self.robot.cameras
     
     def get_camera_info(self) -> List:
+        """
+        get camera info for the robot to init GUI camera feed display elements
+
+        Returns:
+            List: cam info for each cam provided in the config file
+        """
         cam_info = []
         for cam_id, cam_name in enumerate(self.robot.cameras.keys()):
             cam_info.append({
@@ -99,18 +113,32 @@ class RobotControl:
     @safe_stop_image_writer
     def control_loop(
             self,
-            robot,
-            control_time_s=None,
-            teleoperate=False,
-            display_cameras=False,
+            robot:Robot,
+            control_time_s:int=None,
+            teleoperate:bool=False,
+            display_cameras:bool=False,
             dataset: LeRobotDataset | None = None,
-            events=None,
+            events:Dict=None,
             policy=None,
             device=None,
             use_amp=None,
-            fps=None,
+            fps:int=None,
         ) -> None:
+        """
+        main control loop to run different control modes.
 
+        Args:
+            robot (Robot): robot object
+            control_time_s (int, optional): total time to execute the control loop. Defaults to None.
+            teleoperate (bool, optional): enable robot teleop. Defaults to False.
+            display_cameras (bool, optional): Not req since cam feed is displayed in the GUI. Defaults to False.
+            dataset (LeRobotDataset | None, optional): lerobot dataset object. Defaults to None.
+            events (Dict, optional): keyboard btn press events. Defaults to None.
+            policy (optional): policy object for evaluation. Defaults to None.
+            device (optional): Device to run the policy on. Defaults to None.
+            use_amp (optional): ???. Defaults to None.
+            fps (int, optional): FPS to execute the control loop. Defaults to None.
+        """
         if not robot.is_connected:
             robot.connect()
 
@@ -195,13 +223,40 @@ class RobotControl:
         num_image_writer_processes: int = 0,
         num_image_writer_threads_per_camera: int = 4,
         display_cameras: bool = False,
-        play_sounds: bool = True,
+        play_sounds: bool = False,
         resume: bool = False,
         local_files_only: bool = False,
         events = None,
         enable_auto_record: bool = False,
     ):
-        
+        """
+        control model to just record and eval with recording
+
+        Args:
+            robot (Robot): robot object
+            root (Path): root dir path to save dataset
+            repo_id (str): dataset identifier moslty used for hub push
+            single_task (str): brief description of task
+            pretrained_policy_name_or_path (str | None, optional): path to trained policy. Defaults to None.
+            policy_overrides (List[str] | None, optional): policy overrides. Defaults to None.
+            fps (int | None, optional): control fps at which recording is perfomed. Defaults to None.
+            warmup_time_s (int | float, optional): warmup the robot and cam feed. Defaults to 10.
+            episode_time_s (int | float, optional): Max time within which the dataset has to be recorded. Defaults to 60.
+            reset_time_s (int | float, optional): Not required since record is triggered from GUI. Defaults to 0.
+            num_episodes (int, optional): number of episodes to record. Defaults to 50.
+            video (bool, optional): convert to video. Defaults to True.
+            run_compute_stats (bool, optional): computer mean std min max stats for the datatset. Defaults to True.
+            push_to_hub (bool, optional): push the dataset to hub. Defaults to True.
+            tags (list[str] | None, optional): tags for datatset on the hub. Defaults to None.
+            num_image_writer_processes (int, optional): num of processes to run for async image writer. Defaults to 0.
+            num_image_writer_threads_per_camera (int, optional): num of threads to run for async image writer. Defaults to 4.
+            display_cameras (bool, optional): Not req since displaying the cam feed on the GUI. Defaults to False.
+            play_sounds (bool, optional): Play audio notifications. Defaults to False.
+            resume (bool, optional): resume recordingh using prev dataset. Defaults to False.
+            local_files_only (bool, optional): use local datatset files and not search on the hub. Defaults to False.
+            events (_type_, optional): keyboard button press events. Defaults to None.
+            enable_auto_record (bool, optional): Only enabled during eval with recording. This does not wait for GUI input to start rec. Defaults to False.
+        """        
         listener = self.listener
         events = events
         policy = None
@@ -213,7 +268,7 @@ class RobotControl:
         else:
             raise NotImplementedError("Only single-task recording is supported for now")
 
-        # Load pretrained policy
+        # load pretrained policy
         if pretrained_policy_name_or_path is not None:
             logging.info(f"Loading pretrained policy: {pretrained_policy_name_or_path}")
             policy, policy_fps, device, use_amp = init_policy(pretrained_policy_name_or_path, policy_overrides)
@@ -344,14 +399,27 @@ class RobotControl:
     def eval_policy(
         self,
         robot: Robot,
-        pretrained_policy_name_or_path: str | None = None,
+        pretrained_policy_name_or_path: str,
         policy_overrides: List[str] | None = None,
         fps: int | None = None,
-        warmup_time_s: int | float = 0,
-        episode_time_s: int | float = 10,
-        play_sounds: bool = True,
+        warmup_time_s: int | float = 10,
+        episode_time_s: int | float = 60,
+        play_sounds: bool = False,
         events = None,
-    ):
+    ) -> None:
+        """
+        evalutae policy on real robot without recording or manual teleoperation.
+
+        Args:
+            robot (Robot): robot object
+            pretrained_policy_name_or_path (str): path to trained policy.
+            policy_overrides (List[str] | None, optional): policy overrides. Defaults to None.
+            fps (int | None, optional): control fps at which eval is perfomed. Defaults to None.
+            warmup_time_s (int | float, optional): warmup the robot and cam feed. Defaults to 10.
+            episode_time_s (int | float, optional): Max time the robot gets to complete the task. Defaults to 60.
+            play_sounds (bool, optional): Play audio notifications. Defaults to True.
+            events (_type_, optional): keyboard button press events. Defaults to None.
+        """
         
         listener = self.listener
         events = events
@@ -361,6 +429,7 @@ class RobotControl:
 
         # load pretrained policy
         if pretrained_policy_name_or_path is not None:
+            logging.info(f"Loading pretrained policy: {pretrained_policy_name_or_path}")
             policy, policy_fps, device, use_amp = init_policy(pretrained_policy_name_or_path, policy_overrides)
 
             if fps is None:
@@ -370,11 +439,14 @@ class RobotControl:
                 logging.warning(
                     f"There is a mismatch between the provided fps ({fps}) and the one from policy config ({policy_fps})."
                 )
+        else:
+            raise ValueError("No pretrained policy provided for evaluation !!")
+            return
 
         if not robot.is_connected:
             robot.connect()
 
-        logging.info("Warmup the robot")
+        logging.info("Warming up robot ...")
         self.control_loop(
             robot=robot,
             control_time_s=warmup_time_s,
@@ -398,11 +470,17 @@ class RobotControl:
             teleoperate=False,
         )
         
-        logging.info("Stop eval")
+        logging.info("Stopping eval")
         stop_recording(robot, listener, display_cameras=False)
-        logging.info("Exiting")
+        logging.info("Exiting eval policy")
     
-    def run_teleop(self, config):
+    def run_teleop(self, config: DictConfig):
+        """
+        run teleop control mode
+
+        Args:
+            config (DictConfig): teleop config
+        """
 
         logging.info("Started teleop control XD")
         self.control_loop(
@@ -414,7 +492,12 @@ class RobotControl:
         self.events["force_stop"] = False
         
     def run_record(self, config: DictConfig):
+        """
+        run record control mode
 
+        Args:
+            config (DictConfig): record config
+        """
         logging.info("Started record control XD")
         self.record(
             robot = self.robot,
@@ -438,8 +521,13 @@ class RobotControl:
         self.events["force_stop"] = False
 
     def run_eval(self, config: DictConfig):
-        logging.info("Started eval control XD")
+        """
+        run eval control mode with or without recording episodes
 
+        Args:
+            config (DictConfig): eval config
+        """
+        logging.info("Started eval control XD")
         if not config.record_eval_episodes:
             self.eval_policy(
                 robot = self.robot,
@@ -476,6 +564,18 @@ class RobotControl:
         self.events["force_stop"] = False
     
     def select_robot_control_mode(self, mode:str):
+        """
+        main func to execute robot control mode in different threads
+
+        note: Only one control mode can be active at a time and multiple threads are not allowed.
+        already running threads should be stopped before starting a new thread.
+
+        Args:
+            mode (str): mode of control. Options: teleop, record, eval
+
+        Returns:
+            bool: success / fail status of thread execution
+        """
 
         if len(self.running_threads) > 0:
             logging.info("select_robot_control_mode : Background threads running. Please stop other threads / processes !!")
@@ -498,7 +598,18 @@ class RobotControl:
                 target=self.run_eval, 
                 daemon=True, 
                 args=[self.config.eval]
-            )        
+            )  
+        elif mode == "replay":      
+            raise NotImplementedError(
+                "Replay mode is not implemented yet !!"
+            )
+        elif mode == "calibrate":      
+            raise NotImplementedError(
+                "Calibrate mode is not implemented yet !!"
+            )
+        else:
+            logging.info(f"select_robot_control_mode : Invalid control mode {mode}. Please select valid control mode !!")
+            return False
 
         # start the thread and store it
         self.running_threads[mode] = thread
@@ -506,7 +617,12 @@ class RobotControl:
         return True
 
     def stop_threads(self):
-        
+        """
+        stop all active threads running different control modes
+
+        Returns:
+            bool: success / fail status of stopping threads
+        """        
         active_threads = len(self.running_threads)
         if active_threads > 0:
             logging.info(f"stop_threads : {active_threads} background threads running. Terminating all threads !!")
