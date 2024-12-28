@@ -45,7 +45,7 @@ python lerobot/gui_app/app.py
 ```
 
 The app will be available at `http://0.0.0.0:8000`.
-
+Note: You can use the same keyboard shotcuts as indicated in LeRobot package usage.
 
 
 ## Walkthrough
