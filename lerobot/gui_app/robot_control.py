@@ -13,20 +13,15 @@ from lerobot.common.robot_devices.control_utils import init_keyboard_listener, b
 from lerobot.common.utils.utils import init_hydra_config
 from lerobot.common.robot_devices.robots.factory import make_robot
 from lerobot.common.datasets.lerobot_dataset import LeRobotDataset
-from lerobot.common.datasets.image_writer import safe_stop_image_writer, AsyncImageWriter
+from lerobot.common.datasets.image_writer import safe_stop_image_writer
 from lerobot.common.robot_devices.robots.utils import Robot
 from lerobot.common.robot_devices.control_utils import (
-    control_loop,
     has_method,
     init_keyboard_listener,
     init_policy,
-    log_control_info,
-    record_episode,
-    reset_environment,
     sanity_check_dataset_name,
     sanity_check_dataset_robot_compatibility,
     stop_recording,
-    warmup_record,
     predict_action,
 )
 
@@ -220,6 +215,7 @@ class RobotControl:
 
         # Load pretrained policy
         if pretrained_policy_name_or_path is not None:
+            logging.info(f"Loading pretrained policy: {pretrained_policy_name_or_path}")
             policy, policy_fps, device, use_amp = init_policy(pretrained_policy_name_or_path, policy_overrides)
 
             if fps is None:
@@ -231,6 +227,7 @@ class RobotControl:
                 )
 
         if resume:
+            logging.info("Resume enebaled. Loading existing dataset.")
             dataset = LeRobotDataset(
                 repo_id,
                 root=root,
@@ -243,6 +240,7 @@ class RobotControl:
             sanity_check_dataset_robot_compatibility(dataset, robot, fps, video)
         else:
             # Create empty dataset or load existing saved episodes
+            logging.info("Creating new dataset for recording.")
             sanity_check_dataset_name(repo_id, policy)
             dataset = LeRobotDataset.create(
                 repo_id,
@@ -253,11 +251,9 @@ class RobotControl:
                 image_writer_processes=num_image_writer_processes,
                 image_writer_threads=num_image_writer_threads_per_camera * len(robot.cameras),
             )
-        
-        # dataset.image_writer.stop()
-        # time.sleep(2)
-        # dataset.image_writer = self.dataset_image_writer
+        logging.info("Success: Dataset created.")
 
+        
         if not robot.is_connected:
             robot.connect()
 
@@ -282,9 +278,12 @@ class RobotControl:
                 break   
             
             if enable_auto_record:
-                events["start_recording"] = True         
+                events["start_recording"] = True    
 
-            logging.info(f"Ready to record episode {dataset.num_episodes}")
+                logging.info(f"Auto record enabled. Recording episode {dataset.num_episodes}...")    
+            else:
+                logging.info(f"Ready to record episode {dataset.num_episodes}. Press the record button to start recording.")
+            
             self.control_loop(
                 dataset=dataset,
                 robot=robot,
@@ -311,11 +310,16 @@ class RobotControl:
                 logging.info("Re-record episode")
                 events["rerecord_episode"] = False
                 events["exit_early"] = False
+
+                logging.info("Clearing episode buffer")
                 dataset.clear_episode_buffer()
+                logging.info("Success: Episode buffer cleared.")
                 continue
             
             logging.info(f"Saving Episode {dataset.num_episodes}. Please wait ...")
             dataset.save_episode(task)
+            logging.info(f"Success: Episode {dataset.num_episodes} saved.")
+
             recorded_episodes += 1
 
             if events["stop_recording"]:
@@ -326,14 +330,16 @@ class RobotControl:
         logging.info("Stop recording")
         stop_recording(robot, listener, display_cameras=False)
 
-        if run_compute_stats:
-            logging.info("Computing dataset statistics")
+        if run_compute_stats: logging.info("Computing dataset statistics")            
         dataset.consolidate(run_compute_stats)
+        if run_compute_stats: logging.info("Success: Dataset statistics computed.")      
 
         if push_to_hub:
+            logging.info("Pushing dataset to hub. Please wait ...")
             dataset.push_to_hub(tags=tags)
+            logging.info("Success: Dataset pushed to hub.")
 
-        logging.info("Exiting")
+        logging.info("Exiting record loop")
     
     def eval_policy(
         self,
@@ -512,7 +518,6 @@ class RobotControl:
                 logging.info(f"{thread_id} background thread was stopped. XD")
                 self.events["force_stop"] = False
             
-            # self.dataset_image_writer.stop()
         else:
             logging.info(f"stop_threads : No background threads running. XD")
             self.events["force_stop"] = False
