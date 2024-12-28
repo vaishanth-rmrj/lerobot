@@ -158,7 +158,7 @@ class RobotControl:
                 cam_image = cv2.cvtColor(observation[key].numpy(), cv2.COLOR_RGB2BGR)
                 ret, self.cams_image_buffer[key] = cv2.imencode('.jpg', cam_image)
                 if not ret:
-                    logging.info(f"Error encoding cam:{key} feed")
+                    logging.info(f"Control Loop: Error encoding cam:{key} feed")
 
             if fps is not None:
                 dt_s = time.perf_counter() - start_loop_t
@@ -204,6 +204,7 @@ class RobotControl:
         resume: bool = False,
         local_files_only: bool = False,
         events = None,
+        enable_auto_record: bool = False,
     ):
         
         listener = self.listener
@@ -218,16 +219,16 @@ class RobotControl:
             raise NotImplementedError("Only single-task recording is supported for now")
 
         # Load pretrained policy
-        # if pretrained_policy_name_or_path is not None:
-        #     policy, policy_fps, device, use_amp = init_policy(pretrained_policy_name_or_path, policy_overrides)
+        if pretrained_policy_name_or_path is not None:
+            policy, policy_fps, device, use_amp = init_policy(pretrained_policy_name_or_path, policy_overrides)
 
-        #     if fps is None:
-        #         fps = policy_fps
-        #         logging.warning(f"No fps provided, so using the fps from policy config ({policy_fps}).")
-        #     elif fps != policy_fps:
-        #         logging.warning(
-        #             f"There is a mismatch between the provided fps ({fps}) and the one from policy config ({policy_fps})."
-        #         )
+            if fps is None:
+                fps = policy_fps
+                logging.warning(f"No fps provided, so using the fps from policy config ({policy_fps}).")
+            elif fps != policy_fps:
+                logging.warning(
+                    f"There is a mismatch between the provided fps ({fps}) and the one from policy config ({policy_fps})."
+                )
 
         if resume:
             dataset = LeRobotDataset(
@@ -261,14 +262,15 @@ class RobotControl:
             robot.connect()
 
         enable_teleoperation = policy is None
-        # logging.info("Warmup record")
-        # self.control_loop(
-        #     robot=robot,
-        #     control_time_s=warmup_time_s,
-        #     events=events,
-        #     fps=fps,
-        #     teleoperate=enable_teleoperation,
-        # )
+        if warmup_time_s > 0:
+            logging.info("Warming up robot ...")
+            self.control_loop(
+                robot=robot,
+                control_time_s=warmup_time_s,
+                events=events,
+                fps=fps,
+                teleoperate=enable_teleoperation,
+            )
 
         if has_method(robot, "teleop_safety_stop"):
             robot.teleop_safety_stop()
@@ -277,7 +279,10 @@ class RobotControl:
         num_episodes -= dataset.num_episodes
         while True:
             if recorded_episodes >= num_episodes:
-                break            
+                break   
+            
+            if enable_auto_record:
+                events["start_recording"] = True         
 
             logging.info(f"Ready to record episode {dataset.num_episodes}")
             self.control_loop(
@@ -296,8 +301,6 @@ class RobotControl:
 
             # Execute a few seconds without recording to give time to manually reset the environment
             # Current code logic doesn't allow to teleoperate during this time.
-            # TODO(rcadene): add an option to enable teleoperation during reset
-            # Skip reset for the last episode to be recorded
             if not events["stop_recording"] and (
                 (dataset.num_episodes < num_episodes - 1) or events["rerecord_episode"]
             ):
@@ -421,7 +424,6 @@ class RobotControl:
             tags = config.tags,
             num_image_writer_processes = config.num_image_writer_processes,
             num_image_writer_threads_per_camera = config.num_image_writer_threads_per_camera,
-            display_cameras = False,
             play_sounds = False,
             resume = config.resume,
             local_files_only = config.local_files_only,
@@ -442,7 +444,28 @@ class RobotControl:
                 events = self.events,
             )
         else:
-            raise NotImplementedError("Recording while evaluating policy not implemented!!")
+            # evalutate policy and record episodes
+            self.record(
+                robot = self.robot,
+                pretrained_policy_name_or_path = config.pretrained_policy_path,
+                root = config.root,
+                repo_id = config.repo_id,
+                single_task = config.single_task,
+                fps = config.fps,
+                episode_time_s = config.episode_time_s,
+                warmup_time_s= config.warmup_time_s,
+                num_episodes = config.num_episodes,
+                video = True,
+                run_compute_stats = True,
+                push_to_hub = config.push_to_hub,
+                tags = config.tags,
+                num_image_writer_processes = config.num_image_writer_processes,
+                num_image_writer_threads_per_camera = config.num_image_writer_threads_per_camera,
+                play_sounds = False,
+                local_files_only = True,
+                events=self.events,
+                enable_auto_record = True, # only enable auto record for eval ds recording
+            )
         
         self.events["force_stop"] = False
     
