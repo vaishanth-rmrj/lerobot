@@ -1,0 +1,46 @@
+<div class="container">
+    <!-- card to display available arms and calibrate them-->
+    <div class="card" style="background-color: var(--bs-gray-800)!important">
+        <h6 class="card-header p-3">Available Arms</h6>
+
+        <ul class="list-group list-group-flush" id="calibrateAvailableArms"">
+
+            <p class="p-4 mt-2 mb-2 text-warning">No arms found !! Check for connection issues or incorrect config file.</p>
+
+            <!-- sample child -->
+            <!-- <li class="list-group-item" style="background-color: var(--bs-gray-800)!important">
+                <div class="d-flex justify-content-between">
+                    <strong>main_follower</strong> 
+                    <button type="button" class="btn btn-warning btn-sm">Calibrate</button>
+                </div>
+            </li> -->
+        </ul>
+
+        <div class="card-body">
+            <button type="button" class="btn btn-danger" id="stopCalibration">Stop Calibration</button>
+            <br>
+            <small class="form-text">Try not to interupt while arm calibration. App may crash !!</small>
+        </div>
+      </div>
+
+      <!-- card to display connected usb cameras and id -->
+      <div class="card mt-4" style="background-color: var(--bs-gray-800)!important">
+        <h6 class="card-header p-3">Available Cameras</h6>
+
+        <ul class="list-group list-group-flush" id="availableCameras">
+
+            <p class="p-4 mt-2 mb-2 text-warning">No cameras found !! Check for connection issues or incorrect config file.</p>
+
+            <!-- sample child -->
+            <!-- <li class="list-group-item" style="background-color: var(--bs-gray-800)!important">
+                <div class="d-flex justify-content-between">
+                    <strong>Camera 1</strong> 
+                    <strong>Index: 0</strong> 
+                    <strong>Port: /dev/video0</strong> 
+                </div>
+            </li> -->
+        </ul>
+
+      </div>
+
+</div>

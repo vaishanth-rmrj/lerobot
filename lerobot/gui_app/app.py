@@ -15,6 +15,7 @@ import uvicorn
 
 # project imports
 from lerobot.gui_app.robot_control import RobotControl
+from lerobot.common.robot_devices.cameras.opencv import find_cameras
 from lerobot.gui_app.utils import (
     init_logging, 
     load_config,
@@ -266,6 +267,21 @@ async def update_record_config(
         controller = robot_controller,
         mode="eval",
     )
+
+#### calibrate api ####
+@app.get("/robot/calibrate/get-arms-name")
+def get_arms_name():
+    return robot_controller.robot.available_arms
+
+@app.get("/robot/calibrate/get-connected-cams-port")
+def get_connected_cams_port():
+    return find_cameras()
+
+@app.get("/robot/calibrate/{arm_name}")
+def calibrate_arm(arm_name: str):
+    logging.info(f"app : Triggering calibration for arm: {arm_name}")
+    robot_controller.run_calibration(arm_name)
+    return True
 
 def handle_interrupt(signum, frame):
     global is_shutdown    

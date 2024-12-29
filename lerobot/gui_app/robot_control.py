@@ -15,6 +15,7 @@ from lerobot.common.robot_devices.robots.factory import make_robot
 from lerobot.common.datasets.lerobot_dataset import LeRobotDataset
 from lerobot.common.datasets.image_writer import safe_stop_image_writer
 from lerobot.common.robot_devices.robots.utils import Robot
+from lerobot.common.robot_devices.utils import safe_disconnect
 from lerobot.common.robot_devices.control_utils import (
     has_method,
     init_keyboard_listener,
@@ -86,6 +87,10 @@ class RobotControl:
     @property
     def num_cameras(self):
         return self.robot.cameras
+    
+    @property
+    def is_connected(self):
+        return self.robot.is_connected
     
     def get_camera_info(self) -> List:
         """
@@ -474,6 +479,38 @@ class RobotControl:
         stop_recording(robot, listener, display_cameras=False)
         logging.info("Exiting eval policy")
     
+    @safe_disconnect
+    def calibrate(self, robot:Robot, arm_name:str, thread_id:str):
+
+        if not isinstance(arm_name, str):
+            logging.info(f"calibrate : Invalid input type {arm_name}. Accepted inputs is str() type !!")
+            return False
+
+        if arm_name not in robot.available_arms:
+            logging.info(f"calibrate : Invalid arm name {arm_name}. Please select valid arm name !!")
+            return False
+        
+        arm_calib_path = robot.calibration_dir / f"{arm_name}.json"
+        if arm_calib_path.exists():
+            logging.info(f"Removing '{arm_calib_path}'")
+            arm_calib_path.unlink()
+        else:
+            logging.info(f"Calibration file not found '{arm_calib_path}'")
+        
+        if robot.is_connected:
+            robot.disconnect()
+
+        # Calling `connect` automatically runs calibration
+        # when the calibration file is missing
+        logging.info(f"Starting calibration for arm: {arm_name}. Please follow the instructions on the terminal.")
+        robot.connect()
+        robot.disconnect()
+        logging.info("Success: Calibration is done.")
+
+        # stop calibration thread
+        self.running_threads[thread_id].join()
+        del self.running_threads[thread_id]
+    
     def run_teleop(self, config: DictConfig):
         """
         run teleop control mode
@@ -563,6 +600,28 @@ class RobotControl:
         
         self.events["force_stop"] = False
     
+    def run_calibration(self, arm_name:str):
+        """
+        run arm calibration on separate thread
+
+        Args:
+            arm_name (str): name of the arm to calibrate
+        """
+        if len(self.running_threads) > 0:
+            logging.info("select_robot_control_mode : Background threads running. Please stop other threads / processes !!")
+            return False
+        
+        thread_id = "calibrate"
+        logging.info("Started calibration control XD")
+        thread = threading.Thread(
+            target=self.calibrate, 
+            daemon=True, 
+            args=[self.robot, arm_name, thread_id]
+        )
+
+        self.running_threads[thread_id] = thread
+        thread.start()
+    
     def select_robot_control_mode(self, mode:str):
         """
         main func to execute robot control mode in different threads
@@ -602,10 +661,6 @@ class RobotControl:
         elif mode == "replay":      
             raise NotImplementedError(
                 "Replay mode is not implemented yet !!"
-            )
-        elif mode == "calibrate":      
-            raise NotImplementedError(
-                "Calibrate mode is not implemented yet !!"
             )
         else:
             logging.info(f"select_robot_control_mode : Invalid control mode {mode}. Please select valid control mode !!")

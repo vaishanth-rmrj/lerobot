@@ -114,10 +114,10 @@
                   <button class="nav-link" id="eval-tab" data-bs-toggle="tab" data-bs-target="#eval-tab-pane" type="button" role="tab" aria-controls="eval-tab-pane" aria-selected="false" style="font-weight: bold;">Evaluate</button>
                 </li>
                 <li class="nav-item" role="presentation">
-                  <button class="nav-link" id="replay-tab" data-bs-toggle="tab" data-bs-target="#replay-tab-pane" type="button" role="tab" aria-controls="replay-tab-pane" aria-selected="false" disabled style="font-weight: bold;">Replay</button>
+                  <button class="nav-link" id="calibrate-tab" data-bs-toggle="tab" data-bs-target="#calibrate-tab-pane" type="button" role="tab" aria-controls="calibrate-tab-pane" aria-selected="false" style="font-weight: bold;">Calibrate</button>
                 </li>
                 <li class="nav-item" role="presentation">
-                  <button class="nav-link" id="calibrate-tab" data-bs-toggle="tab" data-bs-target="#calibrate-tab-pane" type="button" role="tab" aria-controls="calibrate-tab-pane" aria-selected="false" disabled style="font-weight: bold;">Calibrate</button>
+                  <button class="nav-link" id="replay-tab" data-bs-toggle="tab" data-bs-target="#replay-tab-pane" type="button" role="tab" aria-controls="replay-tab-pane" aria-selected="false" disabled style="font-weight: bold;">Replay</button>
                 </li>
             </ul>
 
@@ -137,9 +137,13 @@
                   {% include 'eval.html' %}
                 </div>
     
+                <div class="tab-pane fade" id="calibrate-tab-pane" role="tabpanel" aria-labelledby="calibrate-tab" tabindex="3">
+                  {% include 'calibrate.html' %}
+                </div>
+
                 <!-- TODO: Implement -->
-                <div class="tab-pane fade" id="replay-tab-pane" role="tabpanel" aria-labelledby="replay-tab" tabindex="3">...</div>
-                <div class="tab-pane fade" id="calibrate-tab-pane" role="tabpanel" aria-labelledby="calibrate-tab" tabindex="4">...</div>
+                <div class="tab-pane fade" id="replay-tab-pane" role="tabpanel" aria-labelledby="replay-tab" tabindex="4">...</div>
+                
 
             </div>
           </div>
@@ -168,5 +172,6 @@
     <script src="/static/js/teleop_panel.js"></script> 
     <script src="/static/js/record_panel.js"></script>
     <script src="/static/js/evaluate_panel.js"></script>
+    <script src="/static/js/calibrate_panel.js"></script>
 </body>
 </html>
