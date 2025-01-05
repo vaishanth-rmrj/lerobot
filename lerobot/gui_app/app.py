@@ -11,6 +11,7 @@ from fastapi import FastAPI, Form, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import StreamingResponse, RedirectResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
+import urllib.parse
 import uvicorn
 
 # project imports
@@ -134,6 +135,15 @@ async def get_config(mode:str):
     record_dict_cfg['robot_config'] = robot_controller.config.robot_cfg_file
     return record_dict_cfg    
 
+@app.post("/api/check-directory-exists")
+async def check_dir_exist(request: Request):
+    data = await request.json()
+    path = data.get("dir_path")
+    decoded_path = urllib.parse.unquote(path)
+    dir_path = Path(decoded_path)
+    if dir_path.exists() and dir_path.is_dir():
+        return {"exists": True}
+    return {"exists": False}
 
 
 #### teleop api ####
@@ -302,4 +312,4 @@ def run_web_app():
     uvicorn.run(app, host="0.0.0.0", port=8000, timeout_keep_alive=2)
 
 if __name__ == "__main__":   
-    run_web_app()    
+    run_web_app()

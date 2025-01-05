@@ -45,8 +45,6 @@ document.getElementById("cancelRecordBtn")
     }
 });
 
-
-
 // config form funcs
 document.getElementById('recordConfigForm')
 .addEventListener('submit', async (event) => {
@@ -76,6 +74,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         // map backend data to form fields
         form.robotConfigSelect.value = data.robot_config;
         form.recordRoot.value = data.root;
+        // check if record root exists
+        checkRecordRootDirExists(data.root);
+
         form.recordRepoID.value = data.repo_id;
         form.recordTags.value = data.tags;
         form.recordFPS.value = data.fps;
@@ -96,3 +97,31 @@ document.addEventListener("DOMContentLoaded", async () => {
         console.error("Error fetching record configuration data:", error);
     }
 });
+
+document.getElementById("recordRoot").addEventListener("input", async (event) => {
+    const dirPath = event.target.value;
+    checkRecordRootDirExists(dirPath);
+    
+});
+
+async function checkRecordRootDirExists(dirPath) {
+    const response = await fetch('/api/check-directory-exists', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ dir_path: dirPath })
+    });
+    if (!response.ok) {
+        console.error("Failed to fetch directory status");
+        return;
+    }
+    const data = await response.json();
+    const dirExistsMsg = document.getElementById("recordDirExistsMsg");
+
+    if (data.exists) {
+        dirExistsMsg.style.display = "block";
+    } else {
+        dirExistsMsg.style.display = "none";
+    }
+}

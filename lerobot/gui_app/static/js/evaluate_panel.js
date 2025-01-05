@@ -50,6 +50,9 @@ document.addEventListener("DOMContentLoaded", async () => {
         form.evalPushToHub.checked = data.push_to_hub;
 
         form.evalRoot.value = data.root;
+        // check if eval root exists
+        checkEvalRootDirExists(data.root);
+
         form.evalRepoID.value = data.repo_id;
         form.evalTags.value = data.tags;
         form.evalFPS.value = data.fps;       
@@ -66,3 +69,30 @@ document.addEventListener("DOMContentLoaded", async () => {
         console.error("Error fetching eval configuration data:", error);
     }
 });
+
+document.getElementById("evalRoot").addEventListener("input", async (event) => {
+    const dirPath = event.target.value;
+    checkEvalRootDirExists(dirPath);    
+});
+
+async function checkEvalRootDirExists(dirPath) {
+    const response = await fetch('/api/check-directory-exists', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ dir_path: dirPath })
+    });
+    if (!response.ok) {
+        console.error("Failed to fetch directory status");
+        return;
+    }
+    const data = await response.json();
+    const dirExistsMsg = document.getElementById("evalDirExistsMsg");
+
+    if (data.exists) {
+        dirExistsMsg.style.display = "block";
+    } else {
+        dirExistsMsg.style.display = "none";
+    }
+}

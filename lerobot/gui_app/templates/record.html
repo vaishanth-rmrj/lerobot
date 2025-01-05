@@ -63,6 +63,9 @@
               <label for="recordRoot" class="form-label">Root Dir</label>
               <input type="text" id="recordRoot" name="root_dir" class="form-control" aria-describedby="recordHelpline" value="data/">
               <div class="form-text">Root directory where the dataset will be stored (e.g. 'dataset/path')</div>
+              <div>
+                <small id="recordDirExistsMsg" style="color: red; display: none;">Folder already exists!! Either turn on resume or del prev dataset folder.</small>
+              </div>
 
               <label for="recordRepoID" class="form-label mt-4">Repo ID</label>
               <input type="text" id="recordRepoID" name="repo_id" class="form-control" aria-describedby="recordHelpline" value="default/dataset">
