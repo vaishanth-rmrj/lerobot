@@ -46,7 +46,7 @@ replay:
 calibrate:
   arms: ""                                              # List of arms to calibrate (e.g. `--arms left_follower right_follower left_leader`)"
 
-hg-dagger:
+hg_dagger:
   fps: 30                                               # Frames per second (set to None to disable)
   resume: False                                         # Resume the process.
   root: data/train_dataset                              # Root directory where the dataset is stored (e.g. 'dataset/path').
