@@ -22,9 +22,11 @@ from lerobot.gui_app.utils import (
     load_config,
     compare_update_cache_config
 )
+from lerobot.gui_app.dataset_visualizer import DatasetVisualizer
 
 #  global vars
 robot_controller = None
+dataset_visualizer = None
 log_list_handler = None
 is_shutdown = False
 
@@ -293,11 +295,80 @@ def calibrate_arm(arm_name: str):
     robot_controller.run_calibration(arm_name)
     return True
 
+#### dataset visualizer api ####
+@app.get("/dataset-visualizer", response_class=HTMLResponse)
+async def dataset_visualizer(request: Request):
+    global dataset_visualizer
+
+    dataset_visualizer = DatasetVisualizer(repo_id="data/med_bottle_pickplace", root="data/med_bottle_pickplace", local_files_only=True)
+    return templates.TemplateResponse("dataset_visualizer.html", {"request": request})
+
+@app.get("/dataset/get-video-info")
+async def get_video_info():
+    global dataset_visualizer
+    return dataset_visualizer.get_video_info()
+
+@app.get("/dataset/get-dataset-info")
+async def get_dataset_info():
+    global dataset_visualizer
+    return dataset_visualizer.get_dataset_info()
+
+@app.get("/dataset/change-episode/{episode_id}")
+async def change_dataset_episode(episode_id:int):
+    global dataset_visualizer
+    dataset_visualizer.init_episode_data(episode_id)
+    return {"status": "success"}
+
+@app.get("/dataset/get-video-frame/{video_key}")
+async def get_video_frame(video_key: str):
+
+    def fetch_video_frame(video_key: str):
+        global is_shutdown
+        import time
+        while not is_shutdown:
+            try:
+                if dataset_visualizer:
+                    yield (b'--frame\r\n'
+                            b'Content-Type: image/jpeg\r\n\r\n' + dataset_visualizer.videos_frame_buffer[video_key].tobytes() + b'\r\n')
+                        
+                time.sleep(0.001)  # Adjust delay as needed
+            except Exception as e:
+                logging.info(f"Error fetching frame: {e} !!")
+
+    try:
+        return StreamingResponse(
+            fetch_video_frame(video_key),
+            media_type='multipart/x-mixed-replace; boundary=frame'
+        )
+    except Exception as e:
+        logging.info(f"Error in video feed: {e}")
+
+@app.get("/dataset/get-state-action")
+async def stream_state_action():
+
+    def generate_data():
+        global dataset_visualizer, is_shutdown
+        import json
+        import time
+
+        # time.sleep(2)  # Wait for the initial data to be available
+        joints = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6"]
+        while not is_shutdown:
+            if dataset_visualizer:
+                data = [{"joint": joint, "state": dataset_visualizer.curr_state[i], "action": dataset_visualizer.curr_action[i]} for i, joint in enumerate(joints)]
+                # print(data)
+                yield f"data: {json.dumps(data)}\n\n"
+            # time.sleep(0.001)
+
+    return StreamingResponse(generate_data(), media_type="text/event-stream")
+
 def handle_interrupt(signum, frame):
-    global is_shutdown    
+    global is_shutdown, dataset_visualizer  
     logging.info("Interrupt received, terminating app !!")
     is_shutdown = True
     robot_controller.stop_threads()
+    if dataset_visualizer:
+        dataset_visualizer.stop_loop()
 
 def run_web_app():
     global robot_controller, log_list_handler
