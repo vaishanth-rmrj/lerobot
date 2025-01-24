@@ -860,12 +860,15 @@ class RobotControl:
                 self.events["force_stop"] = True
                 self.running_threads[thread_id].join()
                 del self.running_threads[thread_id]
-                logging.info(f"{thread_id} background thread was stopped. XD")
-                self.events["force_stop"] = False
+                logging.info(f"{thread_id} background thread was stopped. XD")              
             
         else:
             logging.info(f"stop_threads : No background threads running. XD")
-            self.events["force_stop"] = False
+        
+        # resetting events
+        self.events["force_stop"] = False
+        self.events["interrupt_policy"] = False
+        self.events["take_control"] = False
         
         return True if len(self.running_threads) > 0 else False
     
