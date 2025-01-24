@@ -40,6 +40,8 @@ class RobotControl:
             # add additional event flags
             self.events["force_stop"] = False
             self.events["start_recording"] = False
+            self.events["interrupt_policy"] = False
+            self.events["take_control"] = False
 
         self.robot = self.init_robot(self.config.robot_cfg_file)  
         self.cams_image_buffer = self.init_cam_image_buffers()
@@ -510,6 +512,149 @@ class RobotControl:
         # stop calibration thread
         self.running_threads[thread_id].join()
         del self.running_threads[thread_id]
+
+    def hg_dagger_loop(
+            self,
+            robot: Robot,
+            root: Path,
+            repo_id: str,
+            single_task: str,
+            pretrained_policy_name_or_path: str | None = None,
+            policy_overrides: List[str] | None = None,
+            fps: int | None = None,
+            video: bool = True,
+            num_image_writer_processes: int = 0,
+            num_image_writer_threads_per_camera: int = 4,
+            local_files_only: bool = False,
+            num_epochs:int = 10,
+            curr_epoch:int = 0,
+            num_rollouts:int = 4,
+            max_rollout_time_s:int = 60,
+            warmup_time_s: int | float = 0,
+            reset_time_s: int | float = 0,
+            run_compute_stats: bool = True,
+            push_to_hub: bool = True,
+            resume: bool = False,
+            events:Dict=None,
+        ) -> None:
+
+        if single_task:
+            task = single_task
+        else:
+            raise NotImplementedError("Only single-task recording is supported for now")
+
+        # warmup the camera feed
+        if warmup_time_s > 0:
+            logging.info("Warming up robot ...")
+            self.control_loop(
+                robot=robot,
+                control_time_s=warmup_time_s,
+                events=events,
+                fps=fps,
+                teleoperate=False,
+            )
+
+        # load pretrained policy
+        if pretrained_policy_name_or_path is not None:
+            logging.info(f"Loading pretrained policy: {pretrained_policy_name_or_path}")
+            policy, policy_fps, device, use_amp = init_policy(pretrained_policy_name_or_path, policy_overrides)
+
+            if fps is None:
+                fps = policy_fps
+                logging.warning(f"No fps provided, so using the fps from policy config ({policy_fps}).")
+            elif fps != policy_fps:
+                logging.warning(
+                    f"There is a mismatch between the provided fps ({fps}) and the one from policy config ({policy_fps})."
+                )
+        else:
+            raise ValueError(f"Invalid pretrained policy path: {pretrained_policy_name_or_path}")
+
+        # init lerobot dataset
+        logging.info(f"Loading existing dataset with id: {repo_id}.")
+        dataset = LeRobotDataset(
+            repo_id,
+            root=root,
+            local_files_only=local_files_only,
+        )
+        dataset.start_image_writer(
+            num_processes=num_image_writer_processes,
+            num_threads=num_image_writer_threads_per_camera * len(robot.cameras),
+        )
+        sanity_check_dataset_robot_compatibility(dataset, robot, fps, video)
+        # FUTURE: init I -> [] for learning risk metrics
+
+        # loop epoch
+        for epoch in range(curr_epoch, num_epochs):
+
+            # loop rollout
+            for rollout_id in range(num_rollouts):
+
+                # loop timestep
+                timestamp = 0
+                start_rollout_t = time.perf_counter()
+                # control loop
+                while timestamp < max_rollout_time_s:
+                    start_loop_t = time.perf_counter()
+
+                    if events["take_control"]:
+                        observation, action = robot.teleop_step(record_data=True)
+                    else:
+                        observation = robot.capture_observation()
+
+                    if not events["interrupt_policy"] and not events["take_control"]:
+                        pred_action = predict_action(observation, policy, device, use_amp)
+                        # Action can eventually be clipped using `max_relative_target`,
+                        # so action actually sent is saved in the dataset.
+                        action = robot.send_action(pred_action)
+                        action = {"action": action}
+
+                    # if expert has control record expert labels
+                    if dataset is not None and events["take_control"]:
+                        frame = {**observation, **action}
+                        dataset.add_frame(frame)
+                    
+                    image_keys = [key for key in observation if "image" in key]
+                    for key in image_keys:            
+                        cam_image = cv2.cvtColor(observation[key].numpy(), cv2.COLOR_RGB2BGR)
+                        ret, self.cams_image_buffer[key] = cv2.imencode('.jpg', cam_image)
+                        if not ret:
+                            logging.info(f"Control Loop: Error encoding cam:{key} feed")
+
+                    if fps is not None:
+                        dt_s = time.perf_counter() - start_loop_t
+                        busy_wait(1 / fps - dt_s)
+
+                    timestamp = time.perf_counter() - start_rollout_t
+                    if events["exit_early"]:
+                        logging.info("Early exit triggered. Exiting while loop !!")
+                        events["exit_early"] = False
+                        self.cams_image_buffer = self.init_cam_image_buffers()
+                        break
+                    
+                    if self.check_force_stop(events): 
+                        self.cams_image_buffer = self.init_cam_image_buffers()
+                        return          
+
+                    # FUTURE: if expert taking control record doubt frames to I -> []
+            
+                # append collected expert dataset
+                logging.info(f"Saving Episode {dataset.num_episodes}. Please wait ...")
+                dataset.save_episode(task)
+                logging.info(f"Success: Episode {dataset.num_episodes} saved.")
+                # FUTURE: append doubt frames to I-> []
+
+                if self.check_force_stop(events): return
+            
+            if run_compute_stats: logging.info("Computing dataset statistics")            
+            dataset.consolidate(run_compute_stats)
+            if run_compute_stats: logging.info("Success: Dataset statistics computed.")  
+            # train a novice model on newly collected dataset
+            # save the model based on epoch
+        
+        # FUTURE: calc risk metric using collected doubt frames
+        
+
+        pass
     
     def run_teleop(self, config: DictConfig):
         """
@@ -622,6 +767,33 @@ class RobotControl:
         self.running_threads[thread_id] = thread
         thread.start()
     
+    def run_hg_dagger(self, config:DictConfig) -> None:
+
+        logging.info("Started HG-DAgger control XD")
+        self.hg_dagger_loop(
+            robot = self.robot,
+            root = config.root,
+            repo_id = config.repo_id,
+            single_task = config.single_task,
+            pretrained_policy_name_or_path = config.pretrained_policy_path,
+            fps = config.fps,
+            video = True,
+            num_image_writer_processes = config.num_image_writer_processes,
+            num_image_writer_threads_per_camera = config.num_image_writer_threads_per_camera,
+            local_files_only = config.local_files_only,
+            num_epochs = config.num_epochs,
+            curr_epoch = config.curr_epoch,
+            num_rollouts = config.num_rollouts,
+            max_rollout_time_s = config.max_rollout_time_s,
+            warmup_time_s = config.warmup_time_s,
+            reset_time_s = config.reset_time_s,
+            run_compute_stats = config.run_compute_stats,
+            push_to_hub = config.push_to_hub,
+            resume = config.resume,
+            events = self.events,
+        )
+        self.events["force_stop"] = False
+    
     def select_robot_control_mode(self, mode:str):
         """
         main func to execute robot control mode in different threads
@@ -630,7 +802,7 @@ class RobotControl:
         already running threads should be stopped before starting a new thread.
 
         Args:
-            mode (str): mode of control. Options: teleop, record, eval
+            mode (str): mode of control. Options: teleop, record, eval, calibrate, hg-dagger
 
         Returns:
             bool: success / fail status of thread execution
@@ -658,9 +830,11 @@ class RobotControl:
                 daemon=True, 
                 args=[self.config.eval]
             )  
-        elif mode == "replay":      
-            raise NotImplementedError(
-                "Replay mode is not implemented yet !!"
+        elif mode == "hg-dagger":   
+            thread = threading.Thread(
+                target=self.run_hg_dagger, 
+                daemon=True, 
+                args=[self.config.hg_dagger]
             )
         else:
             logging.info(f"select_robot_control_mode : Invalid control mode {mode}. Please select valid control mode !!")
