@@ -217,14 +217,23 @@ async def update_record_event(event:str):
     event = event.lower()
 
     if event == "start":
-        robot_controller.events["start_recording"] = True
+        if not robot_controller.events["start_recording"]:
+            robot_controller.events["start_recording"] = True
+        else:
+            logging.warning("Already recording episode!!")
 
     elif event == "finish":
-        robot_controller.events["exit_early"] = True
+        if not robot_controller.events["exit_early"]:
+            robot_controller.events["exit_early"] = True
+        else:
+            logging.warning("Already triggered early exit!!")
 
     elif event == "cancel":
-        robot_controller.events["rerecord_episode"] = True
-        robot_controller.events["exit_early"] = True
+        if not robot_controller.events["rerecord_episode"]:
+            robot_controller.events["rerecord_episode"] = True
+            robot_controller.events["exit_early"] = True
+        else:
+            logging.warning("Already canceled episode recording!!")
     
     else:
         logging.warning(f"Unkown record event triggered in backend: {event}")

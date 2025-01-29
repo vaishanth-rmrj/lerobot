@@ -47,6 +47,12 @@ class RobotControl:
         self.robot = self.init_robot(self.config.robot_cfg_file)  
         self.cams_image_buffer = self.init_cam_image_buffers()
     
+    def reinit_event_flags(self) -> None:
+        self.events["force_stop"] = False
+        self.events["start_recording"] = False
+        self.events["interrupt_policy"] = False
+        self.events["take_control"] = False
+    
     def init_cam_image_buffers(self):
         """
         init cam image buffers
@@ -147,6 +153,10 @@ class RobotControl:
             use_amp (optional): ???. Defaults to None.
             fps (int, optional): FPS to execute the control loop. Defaults to None.
         """
+        # re-initialize event flags to prevent
+        # accidental loop triggers from prev executions
+        self.reinit_event_flags()
+
         if not robot.is_connected:
             robot.connect()
 
