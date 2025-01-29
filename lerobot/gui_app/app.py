@@ -296,8 +296,9 @@ def calibrate_arm(arm_name: str):
 async def dataset_visualizer(request: Request):
     global dataset_visualizer
 
-    dataset_visualizer = DatasetVisualizer(repo_id="data/med_bottle_pickplace", root="data/med_bottle_pickplace", local_files_only=True)
-    return templates.TemplateResponse("dataset_visualizer.html", {"request": request})
+    # dataset_visualizer = DatasetVisualizer(repo_id="data/med_bottle_pickplace", root="data/med_bottle_pickplace", local_files_only=True)
+    raise NotImplementedError("Dataset Visualizer not implemented !!!")
+    # return templates.TemplateResponse("dataset_visualizer.html", {"request": request})
 
 @app.get("/dataset/get-video-info")
 async def get_video_info():
@@ -448,8 +449,8 @@ def handle_interrupt(signum, frame):
     logging.info("Interrupt received, terminating app !!")
     is_shutdown = True
     robot_controller.stop_threads()
-    if dataset_visualizer:
-        dataset_visualizer.stop_loop()
+    # if dataset_visualizer is not None:
+    #     dataset_visualizer.stop_loop()
 
 def run_web_app():
     global robot_controller, log_list_handler
