@@ -103,9 +103,11 @@ def make_dataset(cfg, split: str = "train") -> LeRobotDataset | MultiLeRobotData
     else:
         dataset = MultiLeRobotDataset(
             cfg.dataset_repo_id,
+            root="/root/lerobot/",
             delta_timestamps=cfg.training.get("delta_timestamps"),
             image_transforms=image_transforms,
             video_backend=cfg.video_backend,
+            local_files_only=True,
         )
 
     if cfg.get("override_dataset_stats"):
@@ -114,5 +116,6 @@ def make_dataset(cfg, split: str = "train") -> LeRobotDataset | MultiLeRobotData
                 # example of stats_type: min, max, mean, std
                 stats = OmegaConf.to_container(listconfig, resolve=True)
                 dataset.meta.stats[key][stats_type] = torch.tensor(stats, dtype=torch.float32)
+                # dataset.stats[key][stats_type] = torch.tensor(stats, dtype=torch.float32)
 
     return dataset

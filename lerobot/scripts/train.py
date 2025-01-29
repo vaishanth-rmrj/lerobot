@@ -50,6 +50,9 @@ from lerobot.common.utils.utils import (
 )
 from lerobot.scripts.eval import eval_policy
 
+import rerun as rr
+import cv2
+
 
 def make_optimizer_and_scheduler(cfg, policy):
     if cfg.policy.name == "act":
@@ -329,6 +332,7 @@ def train(cfg: DictConfig, out_dir: str | None = None, job_name: str | None = No
     policy = make_policy(
         hydra_cfg=cfg,
         dataset_stats=offline_dataset.meta.stats if not cfg.resume else None,
+        # dataset_stats=offline_dataset.stats if not cfg.resume else None,
         pretrained_policy_name_or_path=str(logger.last_pretrained_model_dir) if cfg.resume else None,
     )
     assert isinstance(policy, nn.Module)
