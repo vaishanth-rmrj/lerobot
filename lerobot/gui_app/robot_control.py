@@ -6,6 +6,7 @@ import logging
 from pathlib import Path
 from typing import List, Dict
 
+import torch
 from omegaconf.dictconfig import DictConfig
 
 # project imports
@@ -513,6 +514,33 @@ class RobotControl:
         self.running_threads[thread_id].join()
         del self.running_threads[thread_id]
 
+    def perform_smooth_transition(self, robot:Robot, fps:int = 30, max_transition_time_s:float = 2.0) -> bool:
+
+        # slow down motor acceleration 
+        # to prevent agressive motion when transitioning
+        for name in robot.follower_arms:
+            robot.follower_arms[name].write("Acceleration", 2)
+                
+        timestamp = 0.0
+        start_t = time.perf_counter()
+        while timestamp < max_transition_time_s:
+            start_loop_t = time.perf_counter()
+
+            # sync leader and follower joint states
+            robot.teleop_step()
+
+            if fps is not None:
+                dt_s = time.perf_counter() - start_loop_t
+                busy_wait(1 / fps - dt_s)
+
+            timestamp = time.perf_counter() - start_t
+        
+        # reset the motor acceleration val
+        for name in robot.follower_arms:
+            robot.follower_arms[name].write("Acceleration", 254)
+
+        return True
+
     def hg_dagger_loop(
             self,
             robot: Robot,
@@ -583,6 +611,7 @@ class RobotControl:
         sanity_check_dataset_robot_compatibility(dataset, robot, fps, video)
         # FUTURE: init I -> [] for learning risk metrics
 
+        is_leader_pose_matched = False
         # loop epoch
         for epoch in range(curr_epoch, num_epochs):
 
@@ -597,12 +626,40 @@ class RobotControl:
                     start_loop_t = time.perf_counter()
 
                     if events["take_control"]:
+                        if not is_leader_pose_matched:
+                            is_leader_pose_matched = self.perform_smooth_transition(robot, fps, max_transition_time_s=2.0)
                         observation, action = robot.teleop_step(record_data=True)
                     else:
                         observation = robot.capture_observation()
+                    
+                    pred_action = predict_action(observation, policy, device, use_amp)
 
                     if not events["interrupt_policy"] and not events["take_control"]:
-                        pred_action = predict_action(observation, policy, device, use_amp)
+
+                        if is_leader_pose_matched:
+                            # TODO: FIX this section
+                            # torch.allclose(leader_joint_pos, follower_joint_pos, atol=abs_tol)
+
+                            max_transition_time_s = 1.0
+                            policy_transition_timestamp = 0.0
+                            start_policy_t = time.perf_counter()
+                            counter = 0
+                            while counter < 5:
+                                start_policy_loop_t = time.perf_counter()
+
+                                observation = robot.capture_observation()
+                                pred_action = predict_action(observation, policy, device, use_amp)
+                                logging.info(pred_action)
+                                counter += 1
+
+                                if fps is not None:
+                                    dt_s = time.perf_counter() - start_policy_loop_t
+                                    busy_wait(1 / fps - dt_s)
+
+                                policy_transition_timestamp = time.perf_counter() - start_policy_t
+
+                            is_leader_pose_matched = False
+                        
                         # Action can eventually be clipped using `max_relative_target`,
                         # so action actually sent is saved in the dataset.
                         action = robot.send_action(pred_action)
@@ -636,11 +693,12 @@ class RobotControl:
                         return          
 
                     # FUTURE: if expert taking control record doubt frames to I -> []
-            
+
                 # append collected expert dataset
-                logging.info(f"Saving Episode {dataset.num_episodes}. Please wait ...")
-                dataset.save_episode(task)
-                logging.info(f"Success: Episode {dataset.num_episodes} saved.")
+                if dataset.episode_buffer is not None:
+                    logging.info(f"Saving Episode {dataset.num_episodes}. Please wait ...")
+                    dataset.save_episode(task)
+                    logging.info(f"Success: Episode {dataset.num_episodes} saved.")
                 # FUTURE: append doubt frames to I-> []
 
                 if self.check_force_stop(events): return
@@ -651,10 +709,7 @@ class RobotControl:
             # train a novice model on newly collected dataset
             # save the model based on epoch
         
-        # FUTURE: calc risk metric using collected doubt frames
-        
-
-        pass
+        # FUTURE: calc risk metric using collected doubt frames        
     
     def run_teleop(self, config: DictConfig):
         """
@@ -830,7 +885,7 @@ class RobotControl:
                 daemon=True, 
                 args=[self.config.eval]
             )  
-        elif mode == "hg-dagger":   
+        elif mode == "hg_dagger":   
             thread = threading.Thread(
                 target=self.run_hg_dagger, 
                 daemon=True, 
