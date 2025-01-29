@@ -149,6 +149,43 @@ async def check_dir_exist(request: Request):
         return {"exists": True}
     return {"exists": False}
 
+@app.post("/api/keyboard-input")
+async def receive_keyboard_input(request: Request):
+    body = await request.json()
+    key = body.get("data", "")
+    logging.info(f"Received keyboard input: {key}")   
+
+    if not robot_controller.events["control_loop_active"]:
+        return {"status": "success"}
+
+    # processing keyboard inputs to trigger event flags
+    if key == "r":
+        if not robot_controller.events["start_recording"]:
+            robot_controller.events["start_recording"] = True
+        else:
+            logging.warning("Already recording episode!!")
+
+    elif key == "ArrowRight":
+        if not robot_controller.events["exit_early"]:
+            robot_controller.events["exit_early"] = True
+        else:
+            logging.warning("Already triggered early exit!!")
+
+    elif key == "ArrowLeft":
+        if not robot_controller.events["rerecord_episode"]:
+            robot_controller.events["rerecord_episode"] = True
+            robot_controller.events["exit_early"] = True
+        else:
+            logging.warning("Already canceled episode recording!!")
+    
+    elif key == "escape":
+        if not robot_controller.events["stop_recording"]:
+            robot_controller.events["stop_recording"] = True
+            robot_controller.events["exit_early"] = True
+        else:
+            logging.warning("Already stopped recording!!")
+
+    return {"status": "success"}
 
 #### teleop api ####
 @app.post("/robot/telop/config-update")

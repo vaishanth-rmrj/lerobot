@@ -36,22 +36,26 @@ class RobotControl:
         self.config = config
         self.running_threads = {}
 
-        self.listener, self.events = init_keyboard_listener()  
+        self.events = {}
         if self.events is not None:
             # add additional event flags
             self.events["force_stop"] = False
             self.events["start_recording"] = False
             self.events["interrupt_policy"] = False
             self.events["take_control"] = False
+            self.events["control_loop_active"] = False
+            self.events["exit_early"] = False
+            self.events["rerecord_episode"] = False
+            self.events["stop_recording"] = False
 
         self.robot = self.init_robot(self.config.robot_cfg_file)  
         self.cams_image_buffer = self.init_cam_image_buffers()
     
-    def reinit_event_flags(self) -> None:
-        self.events["force_stop"] = False
-        self.events["start_recording"] = False
-        self.events["interrupt_policy"] = False
-        self.events["take_control"] = False
+    def reinit_event_flags(self, events) -> None:
+        events["force_stop"] = False
+        events["start_recording"] = False
+        events["interrupt_policy"] = False
+        events["take_control"] = False
     
     def init_cam_image_buffers(self):
         """
@@ -155,7 +159,7 @@ class RobotControl:
         """
         # re-initialize event flags to prevent
         # accidental loop triggers from prev executions
-        self.reinit_event_flags()
+        self.reinit_event_flags(events)
 
         if not robot.is_connected:
             robot.connect()
@@ -174,6 +178,7 @@ class RobotControl:
 
         timestamp = 0
         start_episode_t = time.perf_counter()
+        events["control_loop_active"] = True
         logging.info("Started control loop.")
         while timestamp < control_time_s:
             start_loop_t = time.perf_counter()
@@ -218,8 +223,9 @@ class RobotControl:
             
             if self.check_force_stop(events): 
                 self.cams_image_buffer = self.init_cam_image_buffers()
-                return
-                
+                break
+        
+        events["control_loop_active"] = False                
 
     def record(
         self,
@@ -930,10 +936,8 @@ class RobotControl:
         else:
             logging.info(f"stop_threads : No background threads running. XD")
         
-        # resetting events
-        self.events["force_stop"] = False
-        self.events["interrupt_policy"] = False
-        self.events["take_control"] = False
+        # resetting events flag
+        self.reinit_event_flags(self.events)
         
         return True if len(self.running_threads) > 0 else False
     

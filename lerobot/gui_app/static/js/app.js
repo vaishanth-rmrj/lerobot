@@ -132,5 +132,23 @@ function streamLogs() {
 }
 
 
+// capture keyboard input
+window.addEventListener("keydown", function(event) {
+    const key = event.key;
+
+    // send captured input to backend
+    fetch("/api/keyboard-input", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body:  JSON.stringify({ data: key })
+    })
+    .then(response => response.json())
+    .catch(error => {
+        console.error('Error sending keyboard input to backend:', error);
+    });
+});
+
 // start async funcs
 streamLogs();
