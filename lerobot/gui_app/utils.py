@@ -155,6 +155,8 @@ def compare_update_cache_config(
             raise NotImplementedError("Relay Config update not implemented !!!")
         elif mode == "calibrate":
             raise NotImplementedError("Calibrate Config update not implemented !!!")
+        elif mode == "hg_dagger":
+            controller.config.hg_dagger = OmegaConf.create(new_config)  
         else:
             logging.warning(f"Unkown config mode triggered in backend: {mode}")
             return {"error": f"Invalid mode: {mode}"}        
