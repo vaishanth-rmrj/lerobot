@@ -17,9 +17,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     const evalRobotConfigForm = document.getElementById("evalConfigForm");
     const evalRobotConfigSelect = evalRobotConfigForm.querySelector("#robotConfigSelect");
 
-    const HGDAggerConfigForm = document.getElementById("HGDAggerConfigForm");
-    const HGDAggerRobotConfigSelect = HGDAggerConfigForm.querySelector("#robotConfigSelect");
-
     try {
         // fetch the list of cameras from the backend
         const response = await fetch("/robot/configs-path");
@@ -29,7 +26,6 @@ document.addEventListener("DOMContentLoaded", async () => {
         recordRobotConfigSelect.innerHTML = "";
         teleopRobotConfigSelect.innerHTML = "";
         evalRobotConfigSelect.innerHTML = "";
-        HGDAggerRobotConfigSelect.innerHTML = "";
 
         // populate the <select> element with options
         configsPath.forEach(path => {
@@ -48,10 +44,6 @@ document.addEventListener("DOMContentLoaded", async () => {
             evalOption.textContent = path;
             evalRobotConfigSelect.appendChild(evalOption);
 
-            const HGDAggerOption = document.createElement("option");
-            HGDAggerOption.value = path;
-            HGDAggerOption.textContent = path;
-            HGDAggerRobotConfigSelect.appendChild(HGDAggerOption);
         });
 
     } catch (error) {

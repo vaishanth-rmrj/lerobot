@@ -127,8 +127,6 @@ async def get_config(mode:str):
         raise NotImplementedError("Relay Config fetch not implemented !!!")
     elif mode == "calibrate":
         raise NotImplementedError("Calibrate Config fetch not implemented !!!")
-    elif mode == "hg_dagger":
-        config = robot_controller.config.hg_dagger
     else:
         logging.warning(f"Unkown config mode triggered in backend: {mode}")
         return {"error": f"Invalid mode: {mode}"}
@@ -346,91 +344,6 @@ def calibrate_arm(arm_name: str):
     logging.info(f"app : Triggering calibration for arm: {arm_name}")
     robot_controller.run_calibration(arm_name)
     return True
-
-#### HG DAgger api ####
-@app.post("/robot/hg-dagger/config-update")
-async def update_record_config(
-        robot_config: str = Form(...), 
-        policy_path: str = Form(...), 
-        push_to_hub: bool = Form(False),
-        root_dir: str = Form(...), 
-        repo_id: str = Form(...), 
-        fps: int = Form(...),  
-        warmup_time_s: int = Form(...),      
-        reset_time_s: int = Form(...), 
-        num_image_writer_processes: int = Form(...),
-        num_image_writer_threads_per_camera: int = Form(...),
-        single_task: str = Form(...),
-        resume: bool = Form(False),
-        local_files_only: bool = Form(False),
-        num_epochs: int = Form(...),  
-        num_rollouts: int = Form(...),
-        max_rollout_time_s: int = Form(...),
-        run_compute_stats: bool = Form(False),
-    ):
-    print(f"Policy path: {policy_path}")
-    new_hg_dagger_config = {
-        "resume": resume,
-        "root": root_dir,
-        "pretrained_policy_path": policy_path,
-        "repo_id": repo_id,
-        "fps": fps,
-        "push_to_hub": push_to_hub,
-        "warmup_time_s": warmup_time_s,
-        "reset_time_s": reset_time_s,
-        "max_rollout_time_s": max_rollout_time_s,
-        "num_epochs": num_epochs,
-        "curr_epoch": robot_controller.config.hg_dagger.curr_epoch,
-        "num_rollouts": num_rollouts,
-        "num_image_writer_processes": num_image_writer_processes,
-        "num_image_writer_threads_per_camera": num_image_writer_threads_per_camera,
-        "single_task": single_task,
-        "local_files_only": local_files_only,
-        "run_compute_stats": run_compute_stats,
-    }
-    compare_update_cache_config(
-        prev_config = robot_controller.config.hg_dagger, 
-        new_config = new_hg_dagger_config, 
-        new_robot_config = robot_config, 
-        controller = robot_controller,
-        mode="hg_dagger",
-    )
-
-@app.get("/robot/hg-dagger/event/{event}")
-async def update_record_event(event:str):
-    """
-    endpoint to update robot HG-DAgger events based on input.
-        - valid events: 'interrupt_policy', 'take_control', 'give_control', 'finish_early', 'cancel'.
-    """
-    event = event.lower()
-
-    if event == "interrupt_policy":
-        robot_controller.events["interrupt_policy"] = True
-        robot_controller.events["take_control"] = False
-
-    elif event == "take_control":
-        robot_controller.events["take_control"] = True
-        robot_controller.events["interrupt_policy"] = True    
-
-    elif event == "give_control":
-        robot_controller.events["take_control"] = False
-        robot_controller.events["interrupt_policy"] = False       
-
-    elif event == "finish_early":
-        robot_controller.events["exit_early"] = True
-        robot_controller.events["take_control"] = False
-        robot_controller.events["interrupt_policy"] = False  
-
-    elif event == "cancel":
-        # robot_controller.events["rerecord_episode"] = True
-        # robot_controller.events["exit_early"] = True
-        raise NotImplementedError(f"HG-DAgger session cancel event not implemented!!")
-    
-    else:
-        logging.warning(f"Unkown record event triggered in backend: {event}")
-        return {"error": f"Invalid event: {event}"}
-    
-    return {"status": "success", "event": event}
 
 def handle_interrupt(signum, frame):
     global is_shutdown, dataset_visualizer  

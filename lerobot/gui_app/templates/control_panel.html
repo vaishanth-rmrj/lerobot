@@ -114,9 +114,6 @@
                   <button class="nav-link" id="eval-tab" data-bs-toggle="tab" data-bs-target="#eval-tab-pane" type="button" role="tab" aria-controls="eval-tab-pane" aria-selected="false" style="font-weight: bold;">Evaluate</button>
                 </li>
                 <li class="nav-item" role="presentation">
-                  <button class="nav-link" id="hg-dagger-tab" data-bs-toggle="tab" data-bs-target="#hg-dagger-tab-pane" type="button" role="tab" aria-controls="hg-dagger-tab-pane" aria-selected="false" style="font-weight: bold;">HG-DAgger</button>
-                </li>
-                <li class="nav-item" role="presentation">
                   <button class="nav-link" id="calibrate-tab" data-bs-toggle="tab" data-bs-target="#calibrate-tab-pane" type="button" role="tab" aria-controls="calibrate-tab-pane" aria-selected="false" style="font-weight: bold;">Calibrate</button>
                 </li>
                 <li class="nav-item" role="presentation">
@@ -138,10 +135,6 @@
 
                 <div class="tab-pane fade" id="eval-tab-pane" role="tabpanel" aria-labelledby="eval-tab" tabindex="2">
                   {% include 'eval.html' %}
-                </div>
-
-                <div class="tab-pane fade" id="hg-dagger-tab-pane" role="tabpanel" aria-labelledby="hg-dagger-tab" tabindex="3">
-                  {% include 'hg_dagger.html' %}
                 </div>
     
                 <div class="tab-pane fade" id="calibrate-tab-pane" role="tabpanel" aria-labelledby="calibrate-tab" tabindex="4">
@@ -180,6 +173,5 @@
     <script src="/static/js/record_panel.js"></script>
     <script src="/static/js/evaluate_panel.js"></script>
     <script src="/static/js/calibrate_panel.js"></script>
-    <script src="/static/js/hg_dagger_panel.js"></script>
 </body>
 </html>
