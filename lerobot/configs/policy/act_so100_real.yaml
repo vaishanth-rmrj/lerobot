@@ -14,7 +14,7 @@
 # ```
 
 seed: 1000
-dataset_repo_id: vaishanthr/toy_pick_place_50ep # lerobot/so100_pick_place_lego 
+dataset_repo_id: vaishanthr/toy_pickplace_100ep # lerobot/so100_pick_place_lego 
 
 override_dataset_stats:
   observation.images.webcam:
