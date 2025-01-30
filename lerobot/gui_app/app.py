@@ -187,6 +187,18 @@ async def receive_keyboard_input(request: Request):
 
     return {"status": "success"}
 
+@app.get("/api/reinit-robot")
+async def stop_robot():
+    
+    active_threads = len(robot_controller.running_threads)
+    if active_threads > 0:
+        logging.info(f"app : {active_threads} background threads running. Stop the threads before proceding !!")
+        return {"status": "fail"}
+    
+    curr_cfg = load_config()
+    robot_controller.init_robot(curr_cfg.robot_cfg_file) 
+    return {"status": "success"}
+
 #### teleop api ####
 @app.post("/robot/telop/config-update")
 async def update_teleop_config(robot_config: str = Form(...), fps: int = Form(...)):

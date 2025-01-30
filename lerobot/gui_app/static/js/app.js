@@ -131,7 +131,6 @@ function streamLogs() {
     };
 }
 
-
 // capture keyboard input
 window.addEventListener("keydown", function(event) {
     const key = event.key;
@@ -147,6 +146,19 @@ window.addEventListener("keydown", function(event) {
     .then(response => response.json())
     .catch(error => {
         console.error('Error sending keyboard input to backend:', error);
+    });
+});
+
+// reset robot
+document.getElementById("resetRobotBtn")
+.addEventListener("click", function() {
+
+    fetch("/api/reinit-robot", {
+        method: "GET",
+    })
+    .then(response => response.json())
+    .catch(error => {
+        console.error('Error reinitializing robot on backend:', error);
     });
 });
 

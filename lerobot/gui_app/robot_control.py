@@ -48,7 +48,8 @@ class RobotControl:
             self.events["rerecord_episode"] = False
             self.events["stop_recording"] = False
 
-        self.robot = self.init_robot(self.config.robot_cfg_file)  
+        self.robot = None
+        self.init_robot(self.config.robot_cfg_file)  
         self.cams_image_buffer = self.init_cam_image_buffers()
     
     def reinit_event_flags(self, events) -> None:
@@ -86,16 +87,12 @@ class RobotControl:
 
         Args:
             config_path (str): path to config file
-
-        Returns:
-            Robot: Manipulator robot object
         """
-        logging.info(f"Provided robot config file: {config_path}")
+        logging.info(f"Provided robot config file: {config_path}. Initializing Robot.")
         robot_cfg = init_hydra_config(config_path)
-        if hasattr(self, 'robot'):
+        if hasattr(self, 'robot') and self.robot is not None:
             self.robot.__del__()
-        robot = make_robot(robot_cfg)
-        return robot
+        self.robot = make_robot(robot_cfg)
     
     @property
     def num_cameras(self):
