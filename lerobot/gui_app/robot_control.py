@@ -55,6 +55,7 @@ class RobotControl:
     def reinit_event_flags(self, events) -> None:
         events["force_stop"] = False
         events["start_recording"] = False
+        events["control_loop_active"] = False
         events["interrupt_policy"] = False
         events["take_control"] = False
     
@@ -278,7 +279,6 @@ class RobotControl:
             events (_type_, optional): keyboard button press events. Defaults to None.
             enable_auto_record (bool, optional): Only enabled during eval with recording. This does not wait for GUI input to start rec. Defaults to False.
         """        
-        listener = self.listener
         events = events
         policy = None
         device = None
@@ -404,7 +404,7 @@ class RobotControl:
             if self.check_force_stop(events): return
         
         logging.info("Stop recording")
-        stop_recording(robot, listener, display_cameras=False)
+        stop_recording(robot, listener=None, display_cameras=False)
 
         if run_compute_stats: logging.info("Computing dataset statistics")            
         dataset.consolidate(run_compute_stats)
@@ -442,7 +442,7 @@ class RobotControl:
             events (_type_, optional): keyboard button press events. Defaults to None.
         """
         
-        listener = self.listener
+        listener = None
         events = events
         policy = None
         device = None
@@ -834,6 +834,69 @@ class RobotControl:
 
         self.running_threads[thread_id] = thread
         thread.start()
+    
+    def home_robot(self, fps:int = 30, abs_tol:int = 5.0):
+
+        # TODO: need to somehow store home pose for each follower robot
+        # hardcoded sample
+        homing_joint_pos = {
+            'main': torch.tensor([ -0.4395, 188.8770, 168.8379,  69.9609,   1.2305,   0.4459])
+        }
+
+        if not self.robot.is_connected:
+            self.robot.connect()
+
+        # slow down motor acceleration 
+        # to prevent agressive motion
+        logging.info("Decreasing motor acceleration to 2")
+        for name in self.robot.follower_arms:
+            self.robot.follower_arms[name].write("Acceleration", 2)
+
+        home_pose = []
+        for name in self.robot.follower_arms:
+            if name in homing_joint_pos:
+                home_pose.append(homing_joint_pos[name])
+        home_pose = torch.cat(home_pose)
+
+        logging.info(f"Sending home pose to robot: {home_pose}")
+        self.robot.send_action(home_pose)
+                
+        timestamp = 0.0
+        start_t = time.perf_counter()
+        logging.info("Homing robot. Please wait ...")
+        while True:
+            start_loop_t = time.perf_counter()
+
+            if timestamp > 5:
+                logging.info("Homing robot timed out. Exiting while loop !!")
+                break
+
+            # sync leader and follower joint states
+            # self.robot.teleop_step()
+
+            target_reached = False
+            for name in self.robot.follower_arms:
+                curr_pose = torch.from_numpy(self.robot.follower_arms[name].read("Present_Position"))
+                target_pose = homing_joint_pos[name]
+
+                target_reached = torch.allclose(curr_pose, target_pose, atol=abs_tol)
+            
+            if target_reached: 
+                logging.info("Robot is homed. Exiting while loop !!")
+                break
+
+            if fps is not None:
+                dt_s = time.perf_counter() - start_loop_t
+                busy_wait(1 / fps - dt_s)
+
+            timestamp = time.perf_counter() - start_t
+        
+        # reset the motor acceleration val
+        for name in self.robot.follower_arms:
+            self.robot.follower_arms[name].write("Acceleration", 254)
+
+        return True
+
     
     def run_hg_dagger(self, config:DictConfig) -> None:
 
