@@ -195,6 +195,18 @@ async def stop_robot():
     robot_controller.init_robot(curr_cfg.robot_cfg_file) 
     return {"status": "success"}
 
+@app.get("/api/home-robot")
+async def home_robot():
+    logging.info("app : Triggering home robot")
+    
+    active_threads = len(robot_controller.running_threads)
+    if active_threads > 0:
+        logging.info(f"app : {active_threads} background threads running. Stop the threads before proceding !!")
+        return {"status": "fail"}
+    
+    robot_controller.home_robot() 
+    return {"status": "success"}
+
 #### teleop api ####
 @app.post("/robot/telop/config-update")
 async def update_teleop_config(robot_config: str = Form(...), fps: int = Form(...)):

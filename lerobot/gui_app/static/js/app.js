@@ -154,5 +154,18 @@ document.getElementById("resetRobotBtn")
     });
 });
 
+// home robot
+document.getElementById("homeRobotBtn")
+.addEventListener("click", function() {
+
+    fetch("/api/home-robot", {
+        method: "GET",
+    })
+    .then(response => response.json())
+    .catch(error => {
+        console.error('Error homing robot on backend:', error);
+    });
+});
+
 // start async funcs
 streamLogs();
