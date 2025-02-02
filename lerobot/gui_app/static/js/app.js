@@ -128,7 +128,7 @@ window.addEventListener("keydown", function(event) {
     const key = event.key;
 
     // send captured input to backend
-    fetch("/api/keyboard-input", {
+    fetch("/api/event/keyboard-input", {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
@@ -166,6 +166,27 @@ document.getElementById("homeRobotBtn")
         console.error('Error homing robot on backend:', error);
     });
 });
+
+// activate events
+async function activateEvent(event_name) {
+    try {
+        const response = await fetch('/api/event/activate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ event: event_name })
+        });
+        const data = await response.json();
+        if (data.status === "success") {
+            return true;
+        } else {
+            return false;
+        }
+    } catch (error) {
+        console.error(`Error activating event -> ${event_name}:`, error);
+    }
+}
 
 // start async funcs
 streamLogs();

@@ -20,28 +20,31 @@ document.getElementById("stopRecordSessionBtn")
 
 document.getElementById("startRecordBtn")
 .addEventListener("click", async () => {
-    try {
-        await fetch("/robot/record/event/start", { method: "GET" });
-    } catch (error) {
-        console.error("Error recording:", error);
+    const success = await activateEvent("start_recording");
+    if (success) {
+        console.log("Event activated successfully");
+    } else {
+        console.log("Failed to activate event");
     }
 });
 
 document.getElementById("finishRecordBtn")
 .addEventListener("click", async () => {
-    try {
-        await fetch("/robot/record/event/finish", { method: "GET" });
-    } catch (error) {
-        console.error("Error finishing recording:", error);
+    const success = await activateEvent("finish_recording");
+    if (success) {
+        console.log("Event activated successfully");
+    } else {
+        console.log("Failed to activate event");
     }
 });
 
 document.getElementById("cancelRecordBtn")
 .addEventListener("click", async () => {
-    try {
-        await fetch("/robot/record/event/cancel", { method: "GET" });
-    } catch (error) {
-        console.error("Error cancelling recording:", error);
+    const success = await activateEvent("discard_recording");
+    if (success) {
+        console.log("Event activated successfully");
+    } else {
+        console.log("Failed to activate event");
     }
 });
 
@@ -125,3 +128,4 @@ async function checkRecordRootDirExists(dirPath) {
         dirExistsMsg.style.display = "none";
     }
 }
+
