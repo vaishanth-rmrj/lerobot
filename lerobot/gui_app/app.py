@@ -147,7 +147,55 @@ async def check_dir_exist(request: Request):
         return {"exists": True}
     return {"exists": False}
 
-@app.post("/api/keyboard-input")
+def set_event(event: str) -> bool:
+    global robot_controller
+
+    if event == "start_recording":
+        if not robot_controller.events["start_recording"]:
+            robot_controller.events["start_recording"] = True
+            robot_controller.events["exit_early"] = False
+        else:
+            logging.warning("Already recording episode!!")
+
+    elif event == "finish_recording":
+        if not robot_controller.events["exit_early"]:
+            robot_controller.events["start_recording"] = False
+            robot_controller.events["exit_early"] = True
+        else:
+            logging.warning("Already triggered early exit!!")
+
+    elif event == "discard_recording":
+        if not robot_controller.events["rerecord_episode"]:
+            robot_controller.events["rerecord_episode"] = True
+            robot_controller.events["exit_early"] = True
+            robot_controller.events["start_recording"] = False
+        else:
+            logging.warning("Already discarded episode recording!!")
+
+    elif event == "stop_recording":
+        if not robot_controller.events["stop_recording"]:
+            robot_controller.events["stop_recording"] = True
+            robot_controller.events["exit_early"] = True
+            robot_controller.events["start_recording"] = False
+        else:
+            logging.warning("Already stopped recording!!")
+            
+    else:
+        logging.warning(f"Unkown event triggered in backend: {event}")
+        return False
+    
+    return True
+
+@app.post("/api/event/activate")
+async def activate_event(request: Request):
+    body = await request.json()
+    event_type = body.get("event", "")
+    logging.info(f"Received event: {event_type}")   
+
+    success = set_event(event_type.lower())
+    return {"status": "success"} if success else {"status": "fail"}
+
+@app.post("/api/event/keyboard-input")
 async def receive_keyboard_input(request: Request):
     body = await request.json()
     key = body.get("data", "")
@@ -157,33 +205,20 @@ async def receive_keyboard_input(request: Request):
         return {"status": "success"}
 
     # processing keyboard inputs to trigger event flags
+    success = False
     if key == "r":
-        if not robot_controller.events["start_recording"]:
-            robot_controller.events["start_recording"] = True
-        else:
-            logging.warning("Already recording episode!!")
+        success = set_event("start_recording")
 
     elif key == "ArrowRight":
-        if not robot_controller.events["exit_early"]:
-            robot_controller.events["exit_early"] = True
-        else:
-            logging.warning("Already triggered early exit!!")
+        success = set_event("finish_recording")
 
     elif key == "ArrowLeft":
-        if not robot_controller.events["rerecord_episode"]:
-            robot_controller.events["rerecord_episode"] = True
-            robot_controller.events["exit_early"] = True
-        else:
-            logging.warning("Already canceled episode recording!!")
+        success = set_event("discard_recording")
     
     elif key == "escape":
-        if not robot_controller.events["stop_recording"]:
-            robot_controller.events["stop_recording"] = True
-            robot_controller.events["exit_early"] = True
-        else:
-            logging.warning("Already stopped recording!!")
+        success = set_event("stop_recording")
 
-    return {"status": "success"}
+    return {"status": "success"} if success else {"status": "fail"}    
 
 @app.get("/api/reinit-robot")
 async def stop_robot():
@@ -266,41 +301,6 @@ async def update_record_config(
         controller = robot_controller,
         mode="record",
     )
-
-@app.get("/robot/record/event/{event}")
-async def update_record_event(event:str):
-    """
-    endpoint to update robot recording events based on input.
-        - valid events: 'start', 'finish', 'cancel'.
-    """
-    event = event.lower()
-
-    if event == "start":
-        if not robot_controller.events["start_recording"]:
-            robot_controller.events["start_recording"] = True
-        else:
-            logging.warning("Already recording episode!!")
-
-    elif event == "finish":
-        if not robot_controller.events["exit_early"]:
-            robot_controller.events["exit_early"] = True
-        else:
-            logging.warning("Already triggered early exit!!")
-
-    elif event == "cancel":
-        if not robot_controller.events["rerecord_episode"]:
-            robot_controller.events["rerecord_episode"] = True
-            robot_controller.events["exit_early"] = True
-        else:
-            logging.warning("Already canceled episode recording!!")
-    
-    else:
-        logging.warning(f"Unkown record event triggered in backend: {event}")
-        return {"error": f"Invalid event: {event}"}
-    
-    return {"status": "success", "event": event}
-
-
 
 #### eval api ####
 @app.post("/robot/eval/config-update")
