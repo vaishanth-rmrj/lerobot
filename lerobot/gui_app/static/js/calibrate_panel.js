@@ -52,16 +52,6 @@ function calibrateArm(arm_name) {
     .catch(error => console.error('Error during calibration:', error));
 }
 
-document.getElementById("stopCalibration")
-.addEventListener("click", async () => {
-    try {
-        await fetch("/robot/stop", { method: "GET" });
-    } catch (error) {
-        console.error("Error stopping arm calibration:", error);
-    }
-});
-
-
 document.addEventListener('DOMContentLoaded', function() {
     fetch('/robot/calibrate/get-connected-cams-port')
         .then(response => response.json())
