@@ -109,6 +109,38 @@ async def stream():
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
+@app.get("/robot/stream-state-action")
+async def stream_state_action():
+
+    async def fetch_state_action(sleep_time_s: float = 0.5):
+        global is_shutdown
+        import json
+
+        # Wait for the initial data to be available
+        if robot_controller:
+            joints = robot_controller.get_joint_names()
+        else:
+            joints = ["NA"]
+
+        while not is_shutdown:
+            if robot_controller:                
+                state = robot_controller.get_state()
+                action = robot_controller.get_action()
+
+                if state is None or action is None:
+                    await asyncio.sleep(sleep_time_s)
+                    continue
+
+                assert isinstance(state, list) and isinstance(action, list)
+                assert len(state) == len(action)
+
+                data = [{"joint": joint, "state": state[i], "action": action[i]} for i, joint in enumerate(joints)]
+                yield f"data: {json.dumps(data)}\n\n"
+                
+            await asyncio.sleep(sleep_time_s)
+
+    return StreamingResponse(fetch_state_action(), media_type="text/event-stream")
+
 @app.get("/robot/stop")
 async def stop_robot():
     success = robot_controller.stop_threads()

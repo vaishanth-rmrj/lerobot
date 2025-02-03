@@ -196,5 +196,60 @@ async function activateEvent(event_name) {
     }
 }
 
+// stream state and action
+function streamStateAction() {
+    const eventSource = new EventSource('/robot/stream-state-action');
+  
+    eventSource.onmessage = function(event) {
+      // Parse the response; it is expected to be an array of objects,
+      // each with properties: joint, state, and action.
+      const data = JSON.parse(event.data);
+  
+      const table_body = document.getElementById('stateActionDisplayTable');      
+      // Check if the table already exists
+      let is_table_populated = table_body.querySelector('tr');
+  
+      if (!is_table_populated) {
+  
+        data.forEach(item => {
+          const row = document.createElement('tr');
+  
+          // Joint Name cell (provided by the response).
+          const tdJoint = document.createElement('td');
+          tdJoint.textContent = item.joint;
+          row.appendChild(tdJoint);
+  
+          // State cell.
+          const tdState = document.createElement('td');
+          tdState.textContent = item.state;
+          row.appendChild(tdState);
+  
+          // Action cell.
+          const tdAction = document.createElement('td');
+          tdAction.textContent = item.action;
+          row.appendChild(tdAction);
+  
+          table_body.appendChild(row);
+        });
+
+      } else {
+        // The table already exists, so update the state and action columns.
+        const rows = table_body.querySelectorAll('tr');
+        data.forEach((item, index) => {
+          if (rows[index]) {
+            // Update the state cell (cell index 1) and action cell (cell index 2)
+            rows[index].cells[1].textContent = parseFloat(item.state).toFixed(2);
+            rows[index].cells[2].textContent = parseFloat(item.action).toFixed(2);
+          }
+        });
+      }
+    };
+  
+    eventSource.onerror = function(error) {
+      console.error("Error with EventSource:", error);
+    };
+}
+
 // start async funcs
+streamStateAction();
 streamLogs();
