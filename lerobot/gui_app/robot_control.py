@@ -10,7 +10,7 @@ import torch
 from omegaconf.dictconfig import DictConfig
 
 # project imports
-from lerobot.common.robot_devices.control_utils import init_keyboard_listener, busy_wait 
+from lerobot.common.robot_devices.control_utils import busy_wait 
 from lerobot.common.utils.utils import init_hydra_config
 from lerobot.common.robot_devices.robots.factory import make_robot
 from lerobot.common.datasets.lerobot_dataset import LeRobotDataset
@@ -51,6 +51,7 @@ class RobotControl:
         self.robot = None
         self.init_robot(self.config.robot_cfg_file)  
         self.cams_image_buffer = self.init_cam_image_buffers()
+        self.cam_fps = 30
     
     def reinit_event_flags(self, events) -> None:
         events["force_stop"] = False
@@ -81,6 +82,9 @@ class RobotControl:
             cams_image_buffers["observation.images."+str(cam_info["name"])] = encoded_no_feed_img
         
         return cams_image_buffers
+    
+    def get_fps(self):
+        return self.cam_fps
     
     def init_robot(self, config_path: str)-> Robot:
         """
@@ -204,6 +208,7 @@ class RobotControl:
             for key in image_keys:            
                 cam_image = cv2.cvtColor(observation[key].numpy(), cv2.COLOR_RGB2BGR)
                 ret, self.cams_image_buffer[key] = cv2.imencode('.jpg', cam_image)
+                self.cam_fps = fps
                 if not ret:
                     logging.info(f"Control Loop: Error encoding cam:{key} feed")
 
