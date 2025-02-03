@@ -92,7 +92,10 @@ class RobotControl:
         logging.info(f"Provided robot config file: {config_path}. Initializing Robot.")
         robot_cfg = init_hydra_config(config_path)
         if hasattr(self, 'robot') and self.robot is not None:
+            logging.info("Deleting previous robot object.")
             self.robot.__del__()
+        
+        print("robot_cfg", robot_cfg)
         self.robot = make_robot(robot_cfg)
     
     @property

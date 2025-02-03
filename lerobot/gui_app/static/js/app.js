@@ -153,7 +153,7 @@ window.addEventListener("keydown", function(event) {
 document.getElementById("resetRobotBtn")
 .addEventListener("click", function() {
 
-    fetch("/api/reinit-robot", {
+    fetch("/robot/reset", {
         method: "GET",
     })
     .then(response => response.json())
