@@ -48,6 +48,11 @@ class RobotControl:
 
         self.robot = None
         self.init_robot(self.config.robot_cfg_file)  
+
+        num_joints, self.joint_names = self.robot.motor_features["observation.state"]["shape"][0] ,self.robot.motor_features["observation.state"]["names"]        
+        self.state = ["NA"] * num_joints
+        self.action = ["NA"] * num_joints
+
         self.cams_image_buffer = self.init_cam_image_buffers()
         self.cam_fps = 30
     
@@ -95,7 +100,6 @@ class RobotControl:
             logging.info("Deleting previous robot object.")
             self.robot.__del__()
         
-        print("robot_cfg", robot_cfg)
         self.robot = make_robot(robot_cfg)
     
     @property
@@ -105,6 +109,21 @@ class RobotControl:
     @property
     def is_connected(self):
         return self.robot.is_connected
+    
+    def get_joint_names(self):
+        if isinstance(self.joint_names, torch.Tensor):
+            return self.joint_names.tolist()
+        return self.joint_names
+    
+    def get_state(self):
+        if isinstance(self.state, torch.Tensor):
+            return self.state.tolist()
+        return self.state
+    
+    def get_action(self):
+        if isinstance(self.action, torch.Tensor):
+            return self.action.tolist()
+        return self.action
     
     def get_camera_info(self) -> List:
         """
@@ -207,6 +226,11 @@ class RobotControl:
                 self.cam_fps = fps
                 if not ret:
                     logging.info(f"Control Loop: Error encoding cam:{key} feed")
+            
+            # update states of follower and leader robot (round to 2 decimal places)
+            # FUTURE: update this to round to 2 decimal places for optimization
+            if observation: self.state = observation["observation.state"]           
+            if action: self.action = action["action"]
 
             if fps is not None:
                 dt_s = time.perf_counter() - start_loop_t
