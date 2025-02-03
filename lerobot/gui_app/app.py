@@ -17,6 +17,7 @@ import uvicorn
 # project imports
 from lerobot.gui_app.robot_control import RobotControl
 from lerobot.common.robot_devices.cameras.opencv import find_cameras
+from lerobot.common.robot_devices.control_utils import busy_wait
 from lerobot.gui_app.utils import (
     init_logging, 
     load_config,
@@ -58,16 +59,20 @@ async def get_cameras():
 @app.get("/robot/get-cam-feed/{device_id}")
 async def get_cam_feed(device_id: str):
 
-    def fetch_cam_frame(device_id: str):
-        global is_shutdown
+    async def fetch_cam_frame(device_id: str):
+        global is_shutdown, robot_controller
         import time
+
         while not is_shutdown:
+            start_loop_t = time.perf_counter()
             try:
                 if robot_controller:
-                    yield (b'--frame\r\n'
-                            b'Content-Type: image/jpeg\r\n\r\n' + robot_controller.cams_image_buffer[device_id].tobytes() + b'\r\n')
-                        
-                time.sleep(0.001)  # Adjust delay as needed
+                    yield (b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' + robot_controller.cams_image_buffer[device_id].tobytes() + b'\r\n')
+                    
+                fps = robot_controller.get_fps()
+                dt_s = time.perf_counter() - start_loop_t
+                await asyncio.sleep(1 / fps - dt_s)
+
             except Exception as e:
                 logging.info(f"Error fetching frame: {e} !!")
 
@@ -100,7 +105,7 @@ async def stream():
         while not is_shutdown:   
             if len(log_list_handler.log_list):  
                 yield f"data: {log_list_handler.log_list.pop(0)}\n\n"
-            await asyncio.sleep(0.001)
+            await asyncio.sleep(0.1)
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
