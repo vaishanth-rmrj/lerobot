@@ -112,6 +112,18 @@ async def stop_robot():
     else:
         return {"status": "fail"}
 
+@app.get("/robot/reset")
+async def reset_robot():
+    
+    active_threads = len(robot_controller.running_threads)
+    if active_threads > 0:
+        logging.info(f"app : {active_threads} background threads running. Stop the threads before proceding !!")
+        return {"status": "fail"}
+    
+    curr_cfg = load_config()
+    robot_controller.init_robot(curr_cfg.robot_cfg_file) 
+    return {"status": "success"}
+
 @app.get("/robot/get-control-config/{mode}")
 async def get_config(mode:str):
     mode = mode.lower()
@@ -216,19 +228,7 @@ async def receive_keyboard_input(request: Request):
     elif key == "escape":
         success = set_event("stop_recording")
 
-    return {"status": "success"} if success else {"status": "fail"}    
-
-@app.get("/api/reinit-robot")
-async def stop_robot():
-    
-    active_threads = len(robot_controller.running_threads)
-    if active_threads > 0:
-        logging.info(f"app : {active_threads} background threads running. Stop the threads before proceding !!")
-        return {"status": "fail"}
-    
-    curr_cfg = load_config()
-    robot_controller.init_robot(curr_cfg.robot_cfg_file) 
-    return {"status": "success"}
+    return {"status": "success"} if success else {"status": "fail"}  
 
 @app.get("/api/home-robot")
 async def home_robot():
