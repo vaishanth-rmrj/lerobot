@@ -200,6 +200,7 @@ class RobotControl:
         start_episode_t = time.perf_counter()
         events["control_loop_active"] = True
         logging.info("Started control loop.")
+        observation, action = None, None
         while timestamp < control_time_s:
             start_loop_t = time.perf_counter()
 
