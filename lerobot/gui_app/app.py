@@ -45,6 +45,10 @@ templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), 't
 @app.get("/", response_class=HTMLResponse)
 async def read_control_panel(request: Request):
     return templates.TemplateResponse("control_panel.html", {"request": request})
+
+@app.get("/hg-dagger", response_class=HTMLResponse)
+async def render_hg_dagger_panel(request: Request):
+    return templates.TemplateResponse("hg_dagger.html", {"request": request})
     
 @app.get("/robot/configs-path")
 async def get_robot_config_files_path():

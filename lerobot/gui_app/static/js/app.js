@@ -8,56 +8,75 @@ tooltipTriggerList.forEach(t => {
 
 document.addEventListener("DOMContentLoaded", async () => {
 
-    const teleopRobotConfigForm = document.getElementById("teleopConfigForm");
-    const teleopRobotConfigSelect = teleopRobotConfigForm.querySelector("#robotConfigSelect");
-
-    const recordRobotConfigForm = document.getElementById("recordConfigForm");
-    const recordRobotConfigSelect = recordRobotConfigForm.querySelector("#robotConfigSelect");
-
-    const evalRobotConfigForm = document.getElementById("evalConfigForm");
-    const evalRobotConfigSelect = evalRobotConfigForm.querySelector("#robotConfigSelect");
-
-    const HGDAggerConfigForm = document.getElementById("HGDAggerConfigForm");
-    const HGDAggerRobotConfigSelect = HGDAggerConfigForm.querySelector("#robotConfigSelect");
-
     try {
         // fetch the list of cameras from the backend
         const response = await fetch("/robot/configs-path");
         const configsPath = await response.json();
 
-        // clear existing options
-        recordRobotConfigSelect.innerHTML = "";
-        teleopRobotConfigSelect.innerHTML = "";
-        evalRobotConfigSelect.innerHTML = "";
-        HGDAggerRobotConfigSelect.innerHTML = "";
+        // Check if the forms and select elements are present
+        const teleopRobotConfigForm = document.getElementById("teleopConfigForm");
+        const recordRobotConfigForm = document.getElementById("recordConfigForm");
+        const evalRobotConfigForm = document.getElementById("evalConfigForm");
+        const HGDAggerConfigForm = document.getElementById("HGDAggerConfigForm");
 
-        // populate the <select> element with options
-        configsPath.forEach(path => {
-            const recordOption = document.createElement("option");
-            recordOption.value = path;
-            recordOption.textContent = path;
-            recordRobotConfigSelect.appendChild(recordOption);
+        // Only proceed if the form and select elements exist
+        if (teleopRobotConfigForm) {
+            const teleopRobotConfigSelect = teleopRobotConfigForm.querySelector("#robotConfigSelect");
+            if (teleopRobotConfigSelect) {
+                teleopRobotConfigSelect.innerHTML = "";
+                configsPath.forEach(path => {
+                    const teleopOption = document.createElement("option");
+                    teleopOption.value = path;
+                    teleopOption.textContent = path;
+                    teleopRobotConfigSelect.appendChild(teleopOption);
+                });
+            }
+        }
 
-            const teleopOption = document.createElement("option");
-            teleopOption.value = path;
-            teleopOption.textContent = path;
-            teleopRobotConfigSelect.appendChild(teleopOption);
+        if (recordRobotConfigForm) {
+            const recordRobotConfigSelect = recordRobotConfigForm.querySelector("#robotConfigSelect");
+            if (recordRobotConfigSelect) {
+                recordRobotConfigSelect.innerHTML = "";
+                configsPath.forEach(path => {
+                    const recordOption = document.createElement("option");
+                    recordOption.value = path;
+                    recordOption.textContent = path;
+                    recordRobotConfigSelect.appendChild(recordOption);
+                });
+            }
+        }
 
-            const evalOption = document.createElement("option");
-            evalOption.value = path;
-            evalOption.textContent = path;
-            evalRobotConfigSelect.appendChild(evalOption);
+        if (evalRobotConfigForm) {
+            const evalRobotConfigSelect = evalRobotConfigForm.querySelector("#robotConfigSelect");
+            if (evalRobotConfigSelect) {
+                evalRobotConfigSelect.innerHTML = "";
+                configsPath.forEach(path => {
+                    const evalOption = document.createElement("option");
+                    evalOption.value = path;
+                    evalOption.textContent = path;
+                    evalRobotConfigSelect.appendChild(evalOption);
+                });
+            }
+        }
 
-            const HGDAggerOption = document.createElement("option");
-            HGDAggerOption.value = path;
-            HGDAggerOption.textContent = path;
-            HGDAggerRobotConfigSelect.appendChild(HGDAggerOption);
-        });
+        if (HGDAggerConfigForm) {
+            const HGDAggerRobotConfigSelect = HGDAggerConfigForm.querySelector("#robotConfigSelect");
+            if (HGDAggerRobotConfigSelect) {
+                HGDAggerRobotConfigSelect.innerHTML = "";
+                configsPath.forEach(path => {
+                    const HGDAggerOption = document.createElement("option");
+                    HGDAggerOption.value = path;
+                    HGDAggerOption.textContent = path;
+                    HGDAggerRobotConfigSelect.appendChild(HGDAggerOption);
+                });
+            }
+        }
 
     } catch (error) {
         console.error("Error fetching robot configs:", error);
     }
 });
+
 
 document.addEventListener("DOMContentLoaded", async () => {
     const container = document.getElementById("cameraContainer");
