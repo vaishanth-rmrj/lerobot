@@ -16,6 +16,8 @@
 import torch
 from torch import nn
 
+from scipy.signal import butter, filtfilt
+import numpy as np
 
 def populate_queues(queues, batch):
     for key in batch:
@@ -47,3 +49,41 @@ def get_dtype_from_parameters(module: nn.Module) -> torch.dtype:
     Note: assumes that all parameters have the same dtype.
     """
     return next(iter(module.parameters())).dtype
+
+def butterworth_lowpass_filter(data:np.ndarray, cutoff_freq:float = 0.5, sampling_freq:float = 15.0, order=2) -> np.ndarray:
+    """
+    Applies a low-pass Butterworth filter to the input data.
+    
+    Parameters:
+        data (np.array): Input data array.
+        cutoff (float): Cutoff frequency of the filter (Hz). Smoother for lower values.
+        fs (float): Sampling frequency of the data (Hz).
+        order (int): Order of the filter. Higher order may introduce phase distortions.
+        
+    Returns:
+        filtered_data (np.array): Filtered data array with same shape as data.
+    """
+    nyquist = 0.5 * sampling_freq
+    normal_cutoff = cutoff_freq / nyquist
+    b, a = butter(order, normal_cutoff, btype='low', analog=False)
+
+    # apply the filter along axis 0
+    filtered_data = filtfilt(b, a, data, axis=0)
+    return filtered_data
+
+def smoothen_actions(actions: torch.Tensor) -> torch.Tensor:
+    """
+    Smoothens the provided action sequence tensor
+    Args:
+        actions (torch.Tensor): actions from policy
+    """
+    if not isinstance(actions, torch.Tensor):
+        raise ValueError(f"Invalid input type for actions {type(actions)}. Expected torch.Tensor!")
+    
+    if len(actions.shape) == 3 and not actions.shape[0] == 1:
+        raise NotImplementedError(f"Batch processing not implemented!!")
+
+    actions_np = actions.squeeze(0).cpu().numpy()
+    # apply the low-pass filter
+    actions_np = butterworth_lowpass_filter(actions_np)
+    return torch.from_numpy(actions_np.copy()).unsqueeze(0).to(actions.device)
