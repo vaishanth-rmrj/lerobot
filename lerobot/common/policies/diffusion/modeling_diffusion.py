@@ -40,6 +40,7 @@ from lerobot.common.policies.utils import (
     get_device_from_parameters,
     get_dtype_from_parameters,
     populate_queues,
+    smoothen_actions,
 )
 
 
@@ -126,6 +127,8 @@ class DiffusionPolicy(
         "horizon" may not the best name to describe what the variable actually means, because this period is
         actually measured from the first observation which (if `n_obs_steps` > 1) happened in the past.
         """
+        self.eval()
+        
         batch = self.normalize_inputs(batch)
         if len(self.expected_image_keys) > 0:
             batch = dict(batch)  # shallow copy so that adding a key doesn't modify the original
@@ -136,10 +139,15 @@ class DiffusionPolicy(
         if len(self._queues["action"]) == 0:
             # stack n latest observations from the queue
             batch = {k: torch.stack(list(self._queues[k]), dim=1) for k in batch if k in self._queues}
+            start_policy_pred_t = time.perf_counter()            
             actions = self.diffusion.generate_actions(batch)
+            print(f"Policy pred time: {time.perf_counter() - start_policy_pred_t}")
+
 
             # TODO(rcadene): make above methods return output dictionary?
             actions = self.unnormalize_outputs({"action": actions})["action"]
+
+            actions = smoothen_actions(actions)
 
             self._queues["action"].extend(actions.transpose(0, 1))
 
@@ -189,9 +197,11 @@ class DiffusionModel(nn.Module):
             else:
                 self.rgb_encoder = DiffusionRgbEncoder(config)
                 global_cond_dim += self.rgb_encoder.feature_dim * num_images
+
         if "observation.environment_state" in config.input_shapes:
             self._use_env_state = True
             global_cond_dim += config.input_shapes["observation.environment_state"][0]
+
         if config.use_transformer:
             self.net = TransformerForDiffusion(config, cond_dim=global_cond_dim)
         else:
@@ -799,16 +809,16 @@ class TransformerForDiffusion(nn.Module):
         # conditioning over input observation steps (n_obs_steps) + time (1)
         t_cond = 1 + config.n_obs_steps
 
-        input_dim = config.output_shapes["action"][0]
+        input_dim = config.output_shapes["action"][0] # TODO: check if out_dim ??
         # input embedding stem
-        self.input_emb = nn.Linear(input_dim, config.diffusion_step_embed_dim)
-        self.pos_emb = nn.Parameter(torch.zeros(1, config.horizon, config.diffusion_step_embed_dim))
-        self.drop = nn.Dropout(config.p_drop_emb)
+        self.sample_emb_layer = nn.Linear(input_dim, config.diffusion_step_embed_dim)
+        self.pos_emb = nn.Parameter(torch.zeros(1, config.horizon, config.diffusion_step_embed_dim)) # ??
+        self.dropout_layer = nn.Dropout(config.p_drop_emb) # ??
 
         # cond encoder
-        self.time_emb = DiffusionSinusoidalPosEmb(config.diffusion_step_embed_dim)
+        self.timestep_emb_layer = DiffusionSinusoidalPosEmb(config.diffusion_step_embed_dim)
 
-        self.cond_obs_emb = nn.Linear(cond_dim, config.diffusion_step_embed_dim)
+        self.cond_obs_emb_layer = nn.Linear(cond_dim, config.diffusion_step_embed_dim) # ??
         self.encoder = None
 
         self.cond_pos_emb = nn.Parameter(torch.zeros(1, t_cond, config.diffusion_step_embed_dim))
@@ -861,8 +871,8 @@ class TransformerForDiffusion(nn.Module):
             self.memory_mask = None
 
         # decoder head
-        self.ln_f = nn.LayerNorm(config.diffusion_step_embed_dim)
-        self.head = nn.Linear(config.diffusion_step_embed_dim, input_dim)
+        self.lnorm_layer = nn.LayerNorm(config.diffusion_step_embed_dim)
+        self.head_layer = nn.Linear(config.diffusion_step_embed_dim, input_dim)
 
         # constants
         self.t_cond = t_cond
@@ -915,7 +925,7 @@ class TransformerForDiffusion(nn.Module):
             torch.nn.init.ones_(module.weight)
         elif isinstance(module, TransformerForDiffusion):
             torch.nn.init.normal_(module.pos_emb, mean=0.0, std=0.02)
-            if module.cond_obs_emb is not None:
+            if module.cond_obs_emb_layer is not None:
                 torch.nn.init.normal_(module.cond_pos_emb, mean=0.0, std=0.02)
         elif isinstance(module, ignore_types):
             # no param
@@ -1006,38 +1016,40 @@ class TransformerForDiffusion(nn.Module):
         Returns:
             (B, T, input_dim) diffusion model prediction.
         """
-        # 1. time
+        # sample -> noisy action seq (B, Horizon, Feats)
         batch_size = sample.shape[0]
-        time_emb = self.time_emb(timestep).unsqueeze(1)  # (B,1,n_emb)
 
-        cond = einops.rearrange(
-            global_cond, "b (s n) ... -> b s (n ...)", b=batch_size, s=self.n_obs_steps
-        )  # (B,To,n_cond)
+        # timestep -> num of denoising timesteps for each sample in batch
+        timestep_emb = self.timestep_emb_layer(timestep)  # (B, emb_dim)
+        timestep_emb = timestep_emb.unsqueeze(1) # (B, 1, emb_dim)
 
-        # process input
-        input_emb = self.input_emb(sample)
+        # reshape global cond vect from (B, global_cond_dim) to (B, n_obs_steps, -1)
+        # basically assigning cond vect for each obs step
+        global_cond_reshaped = einops.rearrange(global_cond, "b (s n) ... -> b s (n ...)", b=batch_size, s=self.n_obs_steps) 
 
-        # encoder
-        cond_obs_emb = self.cond_obs_emb(cond)  # (B,To,n_emb)
-        cond_embeddings = torch.cat([time_emb, cond_obs_emb], dim=1)  # (B,To + 1,n_emb)
+        # project noisy action input from (B, n_actions, action_dim) to (B, n_actions, diffusion_step_embed_dim)
+        sample_emb = self.sample_emb_layer(sample)
 
-        position_embeddings = self.cond_pos_emb[
-            :, : cond_embeddings.shape[1], :
-        ]  # each position maps to a (learnable) vector
-        memory = self.drop(cond_embeddings + position_embeddings)
-        memory = self.encoder(memory)  # (B,T_cond,n_emb)
+        ### encoder ###
+        # project cond emb from (B, n_obs, -1) to (B, n_obs, diffusion_step_embed_dim)
+        cond_emb = self.cond_obs_emb_layer(global_cond_reshaped)
+        # concat timestep_emb with cond_emb along channel dim (B, n_obs + 1, diffusion_step_embed_dim)
+        cond_emb = torch.cat([timestep_emb, cond_emb], dim=1)
+        # each position maps to a (learnable) vector
+        cond_pos_emb = self.cond_pos_emb[:, :cond_emb.shape[1], :]  
+        cond_emb = self.dropout_layer(cond_emb + cond_pos_emb) # add position embedding to global cond
+        memory = self.encoder(cond_emb)  # (B,T_cond,n_emb)
 
-        # decoder
-        position_embeddings = self.pos_emb[
-            :, : input_emb.shape[1], :
-        ]  # each position maps to a (learnable) vector
-        x = self.drop(input_emb + position_embeddings)  # (B,T,n_emb)
+        ### decoder ###
+        # each position maps to a (learnable) vector
+        sample_pos_emb = self.pos_emb[:, : sample_emb.shape[1], :]  
+        sample_emb = self.dropout_layer(sample_emb + sample_pos_emb)  # (B,T,n_emb)
         x = self.decoder(
-            tgt=x, memory=memory, tgt_mask=self.mask, memory_mask=self.memory_mask
+            tgt=sample_emb, memory=memory, tgt_mask=self.mask, memory_mask=self.memory_mask
         )  # (B,T,n_emb)
 
         # head
-        x = self.ln_f(x)
-        x = self.head(x)  # (B,T,n_inp)
-
+        x = self.lnorm_layer(x)
+        # down project fomr (B, n_actions, diffusion_step_embed_dim) to (B, n_actions, action_dim)
+        x = self.head_layer(x)
         return x
