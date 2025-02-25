@@ -8,7 +8,6 @@ export default defineConfig({
   build: {
     outDir: '../static/frontend', // place the build output in the FastAPI static folder
     emptyOutDir: true,
-    t
   },
   server: {
     // setup a proxy to forward API calls to FastAPI during development
