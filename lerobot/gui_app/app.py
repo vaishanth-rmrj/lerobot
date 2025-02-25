@@ -39,12 +39,12 @@ app.mount(
 )
 
 # templates directory
-templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), 'templates'))
+# templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), 'templates'))
 
 #### common api ####
-@app.get("/", response_class=HTMLResponse)
-async def read_control_panel(request: Request):
-    return templates.TemplateResponse("control_panel.html", {"request": request})
+# @app.get("/", response_class=HTMLResponse)
+# async def read_control_panel(request: Request):
+#     return templates.TemplateResponse("control_panel.html", {"request": request})
     
 @app.get("/robot/configs-path")
 async def get_robot_config_files_path():
@@ -84,7 +84,7 @@ async def get_cam_feed(device_id: str):
     except Exception as e:
         logging.info(f"Error in video feed: {e}")
 
-@app.get("/select_mode/{mode}")
+@app.get("/robot/select_mode/{mode}")
 async def select_control_mode(mode: str):
     logging.info(f"app : Triggering {mode} mode")
 
