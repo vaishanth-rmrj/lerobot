@@ -39,12 +39,12 @@ app.mount(
 )
 
 # templates directory
-# templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), 'templates'))
+templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), 'static', 'frontend'))
 
 #### common api ####
-# @app.get("/", response_class=HTMLResponse)
-# async def read_control_panel(request: Request):
-#     return templates.TemplateResponse("control_panel.html", {"request": request})
+@app.get("/", response_class=HTMLResponse)
+async def read_control_panel(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
     
 @app.get("/robot/configs-path")
 async def get_robot_config_files_path():
