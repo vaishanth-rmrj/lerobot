@@ -43,6 +43,7 @@ from lerobot.common.policies.utils import (
     smoothen_actions,
 )
 
+import time
 
 class DiffusionPolicy(
     nn.Module,
