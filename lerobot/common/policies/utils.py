@@ -50,7 +50,7 @@ def get_dtype_from_parameters(module: nn.Module) -> torch.dtype:
     """
     return next(iter(module.parameters())).dtype
 
-def butterworth_lowpass_filter(data:np.ndarray, cutoff_freq:float = 0.5, sampling_freq:float = 15.0, order=2) -> np.ndarray:
+def butterworth_lowpass_filter(data:np.ndarray, cutoff_freq:float = 1, sampling_freq:float = 15.0, order=2) -> np.ndarray:
     """
     Applies a low-pass Butterworth filter to the input data.
     
@@ -85,5 +85,7 @@ def smoothen_actions(actions: torch.Tensor) -> torch.Tensor:
 
     actions_np = actions.squeeze(0).cpu().numpy()
     # apply the low-pass filter
-    actions_np = butterworth_lowpass_filter(actions_np)
-    return torch.from_numpy(actions_np.copy()).unsqueeze(0).to(actions.device)
+    filtered_actions_np = butterworth_lowpass_filter(actions_np.copy())
+    # disable filtering for the gripper joint
+    filtered_actions_np[:, -1] = actions_np[:, -1]
+    return torch.from_numpy(filtered_actions_np.copy()).unsqueeze(0).to(actions.device)
