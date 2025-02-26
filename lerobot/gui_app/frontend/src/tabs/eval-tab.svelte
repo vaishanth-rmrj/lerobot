@@ -2,6 +2,7 @@
 import { onMount } from 'svelte';
 import StopControlBtn from '../components/stop-control-btn.svelte';
 import RobotConfigSelect from '../components/robot-config-select.svelte';
+import PretrainedModelSelect from '../components/pretrained-model-select.svelte';
 
 // Reactive variables for form fields
 let robotConfigSelect = "";
@@ -149,7 +150,7 @@ onMount(async () => {
   
               <RobotConfigSelect />  
   
-              <label for="evalPolicyPath" class="form-label">Pretrained Policy</label>
+              <!-- <label for="evalPolicyPath" class="form-label">Pretrained Policy</label>
               <input type="text"
                      id="evalPolicyPath"
                      name="policy_path"
@@ -158,7 +159,8 @@ onMount(async () => {
                      aria-describedby="recordHelpline">
               <div class="form-text">
                 Path to the trained policy. e.g - outputs/train/act_so100_test/checkpoints/last/pretrained_model
-              </div>
+              </div> -->
+              <PretrainedModelSelect />
               
               <hr>
   
