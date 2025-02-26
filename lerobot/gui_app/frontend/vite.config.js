@@ -4,7 +4,7 @@ import { svelte } from '@sveltejs/vite-plugin-svelte'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [svelte()],
-  base: '/static/frontend/',
+  // base: '/static/frontend/',
   build: {
     outDir: '../static/frontend', // place the build output in the FastAPI static folder
     emptyOutDir: true,

@@ -21,7 +21,8 @@ from lerobot.common.robot_devices.control_utils import busy_wait
 from lerobot.gui_app.utils import (
     init_logging, 
     load_config,
-    compare_update_cache_config
+    compare_update_cache_config,
+    get_pretrained_models_info
 )
 
 #  global vars
@@ -278,6 +279,16 @@ async def home_robot():
     
     robot_controller.home_robot() 
     return {"status": "success"}
+
+@app.get("/api/get-pretrained-models-info")
+async def get_pretrained_models_data():
+
+    # TODO: get this from a config file
+    root_dir = Path(__file__).parent.parent.parent
+    output_dir = os.sep.join(["outputs", "train"])
+    dir_path = root_dir / output_dir
+
+    return get_pretrained_models_info(str(dir_path))
 
 #### teleop api ####
 @app.post("/robot/telop/config-update")

@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Dict
+from typing import Dict, List
 
 from omegaconf import OmegaConf
 from omegaconf.dictconfig import DictConfig
@@ -164,3 +164,56 @@ def compare_update_cache_config(
         logging.info(f"Updated Configs: {controller.config}") 
 
     cache_config(controller.config)
+
+def get_pretrained_models_info(output_dir_path: str) -> List[Dict]:
+    """
+    Function to gather information about pretrained models from a given directory structure.
+    
+    Args:
+        output_dir_path (str): The path to the root directory containing subdirectories for each date,
+                                where each date contains subdirectories for runs and checkpoints.
+    
+    Returns:
+        List[Dict]: A list of dictionaries containing the following information:
+            - "date": The date of the run (from the directory name).
+            - "run_name": Dir name for the run
+            - "dir_path": Path to the run directory.
+            - "checkpoints": A list of checkpoint numbers that contain a 'pretrained_model' directory 
+                             with a 'model.safetensors' file.
+    """
+    models_info = []
+    output_dir = Path(output_dir_path)
+    
+    for date_dir_path in output_dir.iterdir():
+
+        # skip empty directories
+        if not any(date_dir_path.iterdir()):
+            continue        
+        
+        date = date_dir_path.name
+        
+        # iterate over the runs directories within each date directory
+        for runs_dir_path in date_dir_path.iterdir():
+            checkpoints_dir_path = runs_dir_path / "checkpoints"
+            
+            # skip if checkpoints directory does not exist
+            if not checkpoints_dir_path.exists():
+                continue
+            
+            # gather all checkpoints with a valid pretrained model
+            available_checkpoints = [
+                checkpoint_dir.name
+                for checkpoint_dir in checkpoints_dir_path.iterdir()
+                if (checkpoint_dir / "pretrained_model").exists() and
+                   any(file.name == "model.safetensors" for file in (checkpoint_dir / "pretrained_model").iterdir())
+            ]
+
+            # append the information for the current run
+            models_info.append({
+                "date": date,
+                "run_name": runs_dir_path.name,
+                "dir_path": runs_dir_path,
+                "checkpoints": available_checkpoints
+            })
+
+    return models_info
