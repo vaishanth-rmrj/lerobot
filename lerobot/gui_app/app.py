@@ -246,12 +246,11 @@ async def activate_event(request: Request):
 @app.post("/api/event/keyboard-input")
 async def receive_keyboard_input(request: Request):
     body = await request.json()
-    key = body.get("data", "")
-    logging.info(f"Received keyboard input: {key}")   
-
+    key = body.get("data", "")    
     if not robot_controller.events["control_loop_active"]:
         return {"status": "success"}
 
+    logging.info(f"Received keyboard input: {key}")   
     # processing keyboard inputs to trigger event flags
     success = False
     if key == "r":

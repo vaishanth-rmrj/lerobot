@@ -1,5 +1,5 @@
 <script>
-import { onMount } from "svelte";
+import { onMount, onDestroy } from "svelte";
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 import "bootstrap-icons/font/bootstrap-icons.css";
@@ -19,10 +19,35 @@ import RecordTab from "./tabs/record-tab.svelte";
 import EvalTab from "./tabs/eval-tab.svelte";
 import CalibrateTab from "./tabs/calibrate-tab.svelte";
 
+function handleKeyDown(event) {
+  const key = event.key;
+  // send captured keyboard input to backend
+  fetch("/api/event/keyboard-input", {
+      method: "POST",
+      headers: {
+          "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ data: key })
+  })
+  .then(response => response.json())
+  .catch(error => {
+      console.error('Error sending keyboard input to backend:', error);
+  });
+}
+
 onMount(() => {
+  // enable bootstrap tooltips
   const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
   tooltipTriggerList.forEach(el => new Tooltip(el));
+
+  // add event listener for keyboard input
+  window.addEventListener("keydown", handleKeyDown);
 });
+
+onDestroy(() => {
+  window.removeEventListener("keydown", handleKeyDown);
+});
+
 </script>
 
 <Navbar />
