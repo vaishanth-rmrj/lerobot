@@ -6,6 +6,7 @@ let isDirExists = $state(false);
 
 // Check if the record root directory exists.
 async function checkRootDirExists(dirPath) {
+    console.log("Checking if directory exists:", dirPath);
     try {
         const response = await fetch('/api/check-directory-exists', {
             method: 'POST',
@@ -32,7 +33,9 @@ async function onRootInput(e) {
 }
 
 onMount(async () => {
-    await checkRootDirExists(rootDir);
+    setTimeout(async () => {
+        await checkRootDirExists(rootDir);
+    }, 1000);
 });
 
 </script>
