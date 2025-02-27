@@ -57,7 +57,7 @@ onMount(async () => {
 // Control button functions.
 async function startRecordSession() {
     try {
-        await fetch("/select_mode/record", { method: "GET" });
+        await fetch("/robot/select_mode/record", { method: "GET" });
     } catch (error) {
         console.error("Error starting record session:", error);
     }
@@ -165,7 +165,7 @@ async function onRecordRootInput(e) {
         <div class="mt-3">
           <button class="btn btn-success me-2"
                   on:click={startRecord}
-                  data-bs-title="Trigger dataset recording"
+                  data-bs-title="Trigger dataset recording (Shortcut: 'r' key)"
                   data-bs-toggle="tooltip"
                   data-bs-placement="bottom">
             <i class="bi bi-record-fill"></i> 

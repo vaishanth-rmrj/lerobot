@@ -347,6 +347,8 @@ class RobotControl:
             # Create empty dataset or load existing saved episodes
             logging.info("Creating new dataset for recording.")
             sanity_check_dataset_name(repo_id, policy)
+            if Path(repo_id).exists():
+                raise ValueError(f"Dataset with name {repo_id} already exists. Please choose a different name or del previous dataset.")
             dataset = LeRobotDataset.create(
                 repo_id,
                 fps,
@@ -421,9 +423,12 @@ class RobotControl:
                 logging.info("Success: Episode buffer cleared.")
                 continue
             
-            logging.info(f"Saving Episode {dataset.num_episodes}. Please wait ...")
-            dataset.save_episode(task)
-            logging.info(f"Success: Episode {dataset.num_episodes} saved.")
+            if dataset.episode_buffer is not None:
+                logging.info(f"Saving Episode {dataset.num_episodes}. Please wait ...")
+                dataset.save_episode(task)
+                logging.info(f"Success: Episode {dataset.num_episodes-1} saved.")
+            else:
+                logging.warning(f"Episode {dataset.num_episodes} buffer is empty. No data was recorded. Forgot to trigger recording ?")
 
             recorded_episodes += 1
 
