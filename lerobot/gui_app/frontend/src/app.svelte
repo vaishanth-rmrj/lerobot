@@ -1,4 +1,10 @@
 <script>
+import { onMount } from "svelte";
+import 'bootstrap/dist/css/bootstrap.min.css';
+import 'bootstrap/dist/js/bootstrap.bundle.min.js';
+import "bootstrap-icons/font/bootstrap-icons.css";
+import { Tooltip } from "bootstrap";
+
 import Navbar from "./components/navbar.svelte";
 import CameraDisplay from "./components/camera-display.svelte";
 import StateActionDisplay from "./components/state-action-display.svelte";
@@ -13,11 +19,10 @@ import RecordTab from "./tabs/record-tab.svelte";
 import EvalTab from "./tabs/eval-tab.svelte";
 import CalibrateTab from "./tabs/calibrate-tab.svelte";
 
-// enable tooltips
-// const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
-// tooltipTriggerList.forEach(t => {
-//     new bootstrap.Tooltip(t);
-// })
+onMount(() => {
+  const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+  tooltipTriggerList.forEach(el => new Tooltip(el));
+});
 </script>
 
 <Navbar />
