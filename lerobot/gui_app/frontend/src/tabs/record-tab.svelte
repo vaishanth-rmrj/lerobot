@@ -2,6 +2,7 @@
 import { onMount } from 'svelte';
 import StopControlBtn from '../components/stop-control-btn.svelte';
 import RobotConfigSelect from '../components/robot-config-select.svelte';
+import DatasetRootdirInput from '../components/dataset-rootdir-input.svelte';
 
 // Form fields for record configuration.
 let robotConfigSelect = "";
@@ -47,8 +48,6 @@ onMount(async () => {
         recordImageWriterProcesses = data.num_image_writer_processes;
         recordImageWriterThreads = data.num_image_writer_threads_per_camera;
         recordSingleTask = data.single_task;
-
-        await checkRecordRootDirExists(recordRoot);
     } catch (error) {
         console.error("Error fetching record configuration data:", error);
     }
@@ -114,33 +113,6 @@ async function submitRecordConfig(event) {
         console.error("Error updating record configuration:", error);
         alert("Error updating record configuration!!");
     }
-}
-
-// Check if the record root directory exists.
-async function checkRecordRootDirExists(dirPath) {
-    try {
-        const response = await fetch('/api/check-directory-exists', {
-            method: 'POST',
-            headers: {
-            'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ dir_path: dirPath })
-        });
-        if (!response.ok) {
-            console.error("Failed to fetch directory status");
-            return;
-        }
-        const data = await response.json();
-        recordDirExists = data.exists;
-    } catch (error) {
-        console.error("Error checking directory exists:", error);
-    }
-}
-
-// Handle input changes for the recordRoot field.
-async function onRecordRootInput(e) {
-    recordRoot = e.target.value;
-    await checkRecordRootDirExists(recordRoot);
 }
 </script>
   
@@ -215,25 +187,8 @@ async function onRecordRootInput(e) {
   
               <RobotConfigSelect />  
               <hr>
-  
-              <label for="recordRoot" class="form-label">Root Dir</label>
-              <input type="text"
-                     id="recordRoot"
-                     name="root_dir"
-                     class="form-control"
-                     aria-describedby="recordHelpline"
-                     bind:value={recordRoot}
-                     on:input={onRecordRootInput}>
-              <div class="form-text">
-                Root directory where the dataset will be stored (e.g. 'dataset/path')
-              </div>
-              <div>
-                {#if recordDirExists}
-                  <small id="recordDirExistsMsg" style="color: red;">
-                    Folder already exists!! Either turn on resume or del prev dataset folder.
-                  </small>
-                {/if}
-              </div>
+              
+              <DatasetRootdirInput rootDirInputName="root_dir" rootDir={recordRoot} />
   
               <label for="recordRepoID" class="form-label mt-4">Repo ID</label>
               <input type="text"
