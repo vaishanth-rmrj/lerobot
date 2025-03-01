@@ -1,5 +1,5 @@
 robot_cfg_file: lerobot/configs/robot/so100.yaml         # Path to robot yaml file used to instantiate the robot using `make_robot` factory function.
-
+home_pose: []
 
 teleop:
   fps: 30                                               # Frames per second (set to None to disable)

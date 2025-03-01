@@ -140,6 +140,9 @@ class RobotControl:
                 "video_url": "/robot/get-cam-feed/observation.images."+str(cam_name)
             })        
         return cam_info
+    
+    def set_home(self):        
+        self.config.home_pose = self.get_state()
         
     def check_force_stop(self, events):
         if events["force_stop"]:
@@ -677,7 +680,7 @@ class RobotControl:
         # TODO: need to somehow store home pose for each follower robot
         # hardcoded sample
         homing_joint_pos = {
-            'main': torch.tensor([ -0.4395, 188.8770, 168.8379,  69.9609,   1.2305,   0.4459])
+            'main': torch.tensor(self.config.home_pose),
         }
 
         if not self.robot.is_connected:

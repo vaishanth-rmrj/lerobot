@@ -21,8 +21,9 @@ from lerobot.common.robot_devices.control_utils import busy_wait
 from lerobot.gui_app.utils import (
     init_logging, 
     load_config,
+    cache_config,
     compare_update_cache_config,
-    get_pretrained_models_info
+    get_pretrained_models_info,
 )
 
 #  global vars
@@ -269,6 +270,7 @@ async def receive_keyboard_input(request: Request):
 
 @app.get("/api/home-robot")
 async def home_robot():
+    global robot_controller
     logging.info("app : Triggering home robot")
     
     active_threads = len(robot_controller.running_threads)
@@ -278,6 +280,17 @@ async def home_robot():
     
     robot_controller.home_robot() 
     return {"status": "success"}
+
+@app.get("/api/set-home-pose")
+async def set_robot_home_pose():  
+    global robot_controller     
+    if robot_controller.is_connected:
+        robot_controller.set_home()
+        cache_config(robot_controller.config)
+        return {"status": "success"}
+    else:
+        logging.warning("app : Robot not connected !!")
+        return {"status": "fail"}
 
 @app.get("/api/get-pretrained-models-info")
 async def get_pretrained_models_data():

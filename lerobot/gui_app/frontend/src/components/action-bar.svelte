@@ -16,18 +16,35 @@ function homeRobot() {
         console.error('Error homing robot on backend:', error);
     });
 }
+function setHomePose() {
+    fetch("/api/set-home-pose", { method: "GET" })
+        .then(response => response.json())
+        .catch(error => {
+            console.error('Error setting home position on backend:', error);
+    });
+}
 </script>
   
 <div class="container mb-3 border rounded-2 p-4">
-    <button 
-        class="btn btn-outline-danger me-2" 
-        id="homeRobotBtn"
-        data-bs-title="Move robot to its home position" 
-        data-bs-toggle="tooltip" 
-        data-bs-placement="bottom"
-        on:click={homeRobot}>
-        Home Robot
-    </button>
+    <div class="btn-group me-2" role="group">
+        <button 
+            class="btn btn-outline-danger" 
+            data-bs-title="Move robot to its home position" 
+            data-bs-toggle="tooltip" 
+            data-bs-placement="bottom"
+            onclick={homeRobot}>
+            Home Robot
+        </button>
+        <button 
+            class="btn btn-outline-danger"
+            type="button" 
+            data-bs-title="Set robot's home position" 
+            data-bs-toggle="tooltip" 
+            data-bs-placement="bottom"
+            onclick={setHomePose}>
+            Set
+        </button>
+    </div>
 
     <button 
         class="btn btn-outline-warning" 
@@ -35,7 +52,7 @@ function homeRobot() {
         data-bs-toggle="tooltip" 
         data-bs-placement="bottom" 
         data-bs-title="Reset robot instance"
-        on:click={resetRobot}>
+        onclick={resetRobot}>
         Reset Robot
     </button>
 </div>
