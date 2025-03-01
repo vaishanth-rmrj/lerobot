@@ -3,6 +3,7 @@ import { onMount } from 'svelte';
 import StopControlBtn from '../components/stop-control-btn.svelte';
 import RobotConfigSelect from '../components/robot-config-select.svelte';
 import PretrainedModelSelect from '../components/pretrained-model-select.svelte';
+import DatasetRootdirInput from '../components/dataset-rootdir-input.svelte';
 
 // Reactive variables for form fields
 let robotConfigSelect = "";
@@ -54,31 +55,6 @@ async function submitEvalConfig(event) {
     }
 }
 
-// Check if the evaluation root directory exists
-async function checkEvalRootDirExists(dirPath) {
-    try {
-        const response = await fetch('/api/check-directory-exists', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ dir_path: dirPath })
-        });
-        if (!response.ok) {
-            console.error("Failed to fetch directory status");
-            return;
-        }
-        const data = await response.json();
-        evalDirExists = data.exists;
-    } catch (error) {
-        console.error("Error checking directory exists:", error);
-    }
-}
-
-// Handle input event for evalRoot field
-function onEvalRootInput(e) {
-    evalRoot = e.target.value;
-    checkEvalRootDirExists(evalRoot);
-}
-
 // Load initial data when component mounts
 onMount(async () => {
 
@@ -89,10 +65,10 @@ onMount(async () => {
 
         robotConfigSelect = data.robot_config;
         evalPolicyPath = data.pretrained_policy_path;
+        console.log("evalPolicyPath", evalPolicyPath);
         evalRecordEpisodes = data.record_eval_episodes;
         evalPushToHub = data.push_to_hub;
         evalRoot = data.root;
-        checkEvalRootDirExists(evalRoot);
         evalRepoID = data.repo_id;
         evalTags = data.tags;
         evalFPS = data.fps;
@@ -149,19 +125,7 @@ onMount(async () => {
                   on:submit={submitEvalConfig}>
   
               <RobotConfigSelect />  
-  
-              <!-- <label for="evalPolicyPath" class="form-label">Pretrained Policy</label>
-              <input type="text"
-                     id="evalPolicyPath"
-                     name="policy_path"
-                     class="form-control"
-                     bind:value={evalPolicyPath}
-                     aria-describedby="recordHelpline">
-              <div class="form-text">
-                Path to the trained policy. e.g - outputs/train/act_so100_test/checkpoints/last/pretrained_model
-              </div> -->
-              <PretrainedModelSelect />
-              
+              <PretrainedModelSelect policyPath={evalPolicyPath}/>              
               <hr>
   
               <div class="container mb-2 d-flex flex-wrap">
@@ -185,25 +149,7 @@ onMount(async () => {
                   <label class="form-check-label" for="evalPushToHub">Push To Hub</label>
                 </div>
               </div> 
-  
-              <label for="evalRoot" class="form-label">Root Dir</label>
-              <input type="text"
-                     id="evalRoot"
-                     name="root_dir"
-                     class="form-control"
-                     bind:value={evalRoot}
-                     on:input={onEvalRootInput}
-                     aria-describedby="evalHelpline">
-              <div class="form-text">
-                Root directory where the dataset will be stored (e.g. 'dataset/path')
-              </div>
-              <div>
-                {#if evalDirExists}
-                  <small id="evalDirExistsMsg" style="color: red;">
-                    Folder already exists!! Delete prev eval dataset folder.
-                  </small>
-                {/if}
-              </div>
+              <DatasetRootdirInput rootDirInputName="root_dir" rootDir={evalRoot} />
   
               <label for="evalRepoID" class="form-label mt-4">Repo ID</label>
               <input type="text"
