@@ -1,1 +1,9 @@
-robot_type: so100
+available_robot_types:
+  - so100
+  - aloha
+  - koch
+  - koch_bimanual
+  - moss
+  - stretch
+  - lekiwi
+default_robot_type: so100
