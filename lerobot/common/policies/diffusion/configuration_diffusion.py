@@ -104,9 +104,9 @@ class DiffusionConfig(PreTrainedConfig):
     """
 
     # Inputs / output structure.
-    n_obs_steps: int = 2
-    horizon: int = 16
-    n_action_steps: int = 8
+    n_obs_steps: int = 4
+    horizon: int = 100
+    n_action_steps: int = 100
 
     normalization_mapping: dict[str, NormalizationMode] = field(
         default_factory=lambda: {
@@ -123,8 +123,8 @@ class DiffusionConfig(PreTrainedConfig):
     # Architecture / modeling.
     # Vision backbone.
     vision_backbone: str = "resnet18"
-    crop_shape: tuple[int, int] | None = (84, 84)
-    crop_is_random: bool = True
+    crop_shape: tuple[int, int] | None = None
+    crop_is_random: bool = False
     pretrained_backbone_weights: str | None = None
     use_group_norm: bool = True
     spatial_softmax_num_keypoints: int = 32
@@ -136,7 +136,7 @@ class DiffusionConfig(PreTrainedConfig):
     use_film_scale_modulation: bool = True
     # Noise scheduler.
     noise_scheduler_type: str = "DDPM"
-    num_train_timesteps: int = 100
+    num_train_timesteps: int = 10
     beta_schedule: str = "squaredcos_cap_v2"
     beta_start: float = 0.0001
     beta_end: float = 0.02
@@ -144,18 +144,18 @@ class DiffusionConfig(PreTrainedConfig):
     clip_sample: bool = True
     clip_sample_range: float = 1.0
     # Transformer
-    use_transformer: bool = False
+    use_transformer: bool = True
     n_layer: int = 8
     n_head: int = 4
     p_drop_emb: float = 0.0
     p_drop_attn: float = 0.3
     causal_attn: bool = True
-    n_cond_layers: int = 0
+    n_cond_layers: int = 8
     # Architecture shared params
-    diffusion_step_embed_dim: int = 128
+    diffusion_step_embed_dim: int = 256
 
     # Inference
-    num_inference_steps: int | None = None
+    num_inference_steps: int | None = 10
 
     # Loss computation
     do_mask_loss_for_padding: bool = False
