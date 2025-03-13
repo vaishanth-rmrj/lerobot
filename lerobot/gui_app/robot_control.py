@@ -112,6 +112,9 @@ class RobotController:
             })        
         return cam_info
     
+    def get_camera_image_buffer(self, cam_id:str) -> np.ndarray:
+        return self.robot_state.camera_image_buffers[cam_id]
+    
     def set_home(self):        
         self.config.home_pose = self.get_state()     
     
