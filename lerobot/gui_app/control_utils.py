@@ -23,17 +23,17 @@ from lerobot.common.robot_devices.control_utils import (
     stop_recording,
     warmup_record,
 )
-from lerobot.common.robot_devices.control_configs import (
-    CalibrateControlConfig,
-    ControlPipelineConfig,
-    RecordControlConfig,
-    RemoteRobotConfig,
-    ReplayControlConfig,
-    TeleoperateControlConfig,
-)
 
 from lerobot.gui_app.robot_control import reinit_event_flags, RobotState
 from lerobot.gui_app.utils import init_image_buffers
+from lerobot.gui_app.configs.gui_control_configs import (
+    CalibrateControlConfig,
+    GUIControlPipelineConfig,
+    RecordControlConfig,
+    EvalControlConfig,
+    ReplayControlConfig,
+    TeleoperateControlConfig,
+)
 
 def update_robot_state(robot_state:RobotState, observation:Dict, action:Dict, fps:float) -> None:
 
@@ -66,6 +66,28 @@ def check_force_stop(events):
         return True
     else:
         return False
+
+def convert_config_from_eval_to_record(eval_config: EvalControlConfig) -> RecordControlConfig:
+    return RecordControlConfig(
+        repo_id=eval_config.repo_id,
+        single_task=eval_config.single_task,
+        root=eval_config.root,
+        policy=eval_config.policy,
+        fps=eval_config.fps,
+        warmup_time_s=eval_config.warmup_time_s,
+        episode_time_s=eval_config.episode_time_s,
+        reset_time_s=eval_config.reset_time_s,
+        num_episodes=eval_config.num_episodes,
+        video=eval_config.video,
+        push_to_hub=eval_config.push_to_hub,
+        private=eval_config.private,
+        tags=eval_config.tags,
+        num_image_writer_processes=eval_config.num_image_writer_processes,
+        num_image_writer_threads_per_camera=eval_config.num_image_writer_threads_per_camera,
+        display_cameras=eval_config.display_cameras,
+        play_sounds=eval_config.play_sounds,
+        resume=eval_config.resume,
+    )
 
 @safe_stop_image_writer
 def control_loop(
@@ -302,3 +324,29 @@ def record(
         logging.info("Success: Dataset pushed to hub.")
 
     logging.info("Exiting record loop")
+
+def eval(
+    robot: Robot,
+    robot_state: RobotState,
+    cfg: EvalControlConfig,
+    events = None,
+) -> None:
+    """
+    evalutae policy on real robot without recording or manual teleoperation.
+
+    Args:
+        robot (Robot): robot object
+        robot_state (RobotState): robot state
+        cfg (EvalControlConfig): config for evaluation            
+        events (_type_, optional): keyboard button press events. Defaults to None.
+    """
+
+    record_control_config = convert_config_from_eval_to_record(EvalControlConfig)
+
+    record(
+        robot,
+        robot_state,
+        cfg=record_control_config,
+        events=events,
+        enable_auto_record=cfg.record_eval_episodes,
+    )
