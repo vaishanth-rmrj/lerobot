@@ -4,6 +4,7 @@ from pathlib import Path
 import cv2 
 import numpy as np
 from dataclasses import dataclass
+import copy
 from typing import Dict, List
 
 from omegaconf import OmegaConf
@@ -123,18 +124,23 @@ def load_config(robot_type:str, cache_path:str = ".cache/gui_app/gui_control_pip
             logging.info(f"Loading config from cache: {cache_path}")
             is_cache_available = True
 
+    cfg = draccus.parse(
+        config_class=GUIControlPipelineConfig,
+        args=[f"--robot.type={robot_type}"],
+    )
+    
     if is_cache_available:
-        cfg = draccus.parse(
+        cfg_cache = draccus.parse(
             config_class=GUIControlPipelineConfig, 
             config_path=str(cache_path), 
             args=[f"--robot.type={robot_type}"],
         )
+        cfg_robot = copy.copy(cfg.robot)
+        cfg = cfg_cache
+        cfg.robot = cfg_robot
+        draccus.dump(cfg, open(str(cache_path),'w'))
     else:
-        logging.info("App cache not found. Creating cache from config!!")  
-        cfg = draccus.parse(
-            config_class=GUIControlPipelineConfig,
-            args=[f"--robot.type={robot_type}"],
-        )
+        logging.info("App cache not found. Creating cache from config!!")
         # cache the config as yaml file
         draccus.dump(cfg, open(str(cache_path),'w'))
     return cfg
