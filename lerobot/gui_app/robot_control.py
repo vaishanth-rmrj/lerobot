@@ -57,7 +57,7 @@ class RobotState:
     state: List[float]
     action: List[float]
 
-class RobotControl:
+class RobotController:
     def __init__(
             self,
             config: GUIControlPipelineConfig
