@@ -67,7 +67,7 @@ def init_logging():
     # Return the list handler for later use
     return list_handler
 
-def cache_config(config: DictConfig, dir_name:str ="gui_app", filename:str = "mode_cfg.yaml"):
+def cache_config(config: GUIControlPipelineConfig, cache_path:str = ".cache/gui_app/gui_control_pipeline_config.yaml"):
     """
     cache config to update control mode config during consective launches
 
@@ -75,12 +75,10 @@ def cache_config(config: DictConfig, dir_name:str ="gui_app", filename:str = "mo
         config (DictConfig): config to cache
         dir (str, optional): dir to save cache files. Defaults to ".cache".
     """
-    cache_dir = (Path(__file__).resolve().parent.parent.parent / ".cache" / dir_name).resolve()
-    cache_dir.mkdir(parents=True, exist_ok=True)
-    cache_file = cache_dir / filename
-
-    OmegaConf.save(config, cache_file)    
-    logging.info(f"Config cached to: {cache_file}")
+    cache_path = Path(cache_path).resolve()
+    cache_path.parent.mkdir(parents=True, exist_ok=True)   
+    draccus.dump(config, open(str(cache_path),'w'))
+    logging.info(f"Config cached to: {str(cache_path)}")
 
 def check_config_change(dict_config:Dict, hydra_config:DictConfig):
     """
@@ -208,37 +206,28 @@ def get_pretrained_models_info(output_dir_path: str) -> List[Dict]:
     models_info = []
     output_dir = Path(output_dir_path)
     
-    for date_dir_path in output_dir.iterdir():
-
-        # skip empty directories
-        if not any(date_dir_path.iterdir()):
-            continue        
+    # iterate over the runs directories
+    for runs_dir_path in output_dir.iterdir():
+        checkpoints_dir_path = runs_dir_path / "checkpoints"
         
-        date = date_dir_path.name
+        # skip if checkpoints directory does not exist
+        if not checkpoints_dir_path.exists():
+            continue
         
-        # iterate over the runs directories within each date directory
-        for runs_dir_path in date_dir_path.iterdir():
-            checkpoints_dir_path = runs_dir_path / "checkpoints"
-            
-            # skip if checkpoints directory does not exist
-            if not checkpoints_dir_path.exists():
-                continue
-            
-            # gather all checkpoints with a valid pretrained model
-            available_checkpoints = [
-                checkpoint_dir.name
-                for checkpoint_dir in checkpoints_dir_path.iterdir()
-                if (checkpoint_dir / "pretrained_model").exists() and
-                   any(file.name == "model.safetensors" for file in (checkpoint_dir / "pretrained_model").iterdir())
-            ]
+        # gather all checkpoints with a valid pretrained model
+        available_checkpoints = [
+            checkpoint_dir.name
+            for checkpoint_dir in checkpoints_dir_path.iterdir()
+            if (checkpoint_dir / "pretrained_model").exists() and
+                any(file.name == "model.safetensors" for file in (checkpoint_dir / "pretrained_model").iterdir())
+        ]
 
-            # append the information for the current run
-            models_info.append({
-                "date": date,
-                "run_name": runs_dir_path.name,
-                "dir_path": runs_dir_path,
-                "checkpoints": available_checkpoints
-            })
+        # append the information for the current run
+        models_info.append({
+            "run_name": runs_dir_path.name,
+            "dir_path": runs_dir_path,
+            "checkpoints": available_checkpoints
+        })
 
     return models_info
 
