@@ -1,15 +1,36 @@
 import time
 import logging
 import cv2
+from pathlib import Path
 from typing import Dict
 
 from lerobot.common.datasets.image_writer import safe_stop_image_writer
 from lerobot.common.robot_devices.robots.utils import Robot
 from lerobot.common.robot_devices.utils import busy_wait
-from lerobot.common.robot_devices.control_utils import predict_action
 from lerobot.common.datasets.lerobot_dataset import LeRobotDataset
 from lerobot.common.policies.pretrained import PreTrainedPolicy
 from lerobot.common.utils.utils import get_safe_torch_device, has_method
+from lerobot.common.policies.factory import make_policy
+from lerobot.common.robot_devices.control_utils import (
+    predict_action,
+    control_loop,
+    init_keyboard_listener,
+    log_control_info,
+    record_episode,
+    reset_environment,
+    sanity_check_dataset_name,
+    sanity_check_dataset_robot_compatibility,
+    stop_recording,
+    warmup_record,
+)
+from lerobot.common.robot_devices.control_configs import (
+    CalibrateControlConfig,
+    ControlPipelineConfig,
+    RecordControlConfig,
+    RemoteRobotConfig,
+    ReplayControlConfig,
+    TeleoperateControlConfig,
+)
 
 from lerobot.gui_app.robot_control import reinit_event_flags, RobotState
 from lerobot.gui_app.utils import init_image_buffers
@@ -64,14 +85,13 @@ def control_loop(
 
     Args:
         robot (Robot): robot object
+        robot_state (RobotState): robot state
         control_time_s (int, optional): total time to execute the control loop. Defaults to None.
         teleoperate (bool, optional): enable robot teleop. Defaults to False.
         display_cameras (bool, optional): Not req since cam feed is displayed in the GUI. Defaults to False.
         dataset (LeRobotDataset | None, optional): lerobot dataset object. Defaults to None.
         events (Dict, optional): keyboard btn press events. Defaults to None.
         policy (optional): policy object for evaluation. Defaults to None.
-        device (optional): Device to run the policy on. Defaults to None.
-        use_amp (optional): ???. Defaults to None.
         fps (int, optional): FPS to execute the control loop. Defaults to None.
     """
     # re-initialize event flags to prevent
@@ -145,3 +165,140 @@ def control_loop(
             break
     
     events["control_loop_active"] = False
+
+def record(
+    robot: Robot,
+    robot_state: RobotState,
+    cfg: RecordControlConfig,    
+    local_files_only: bool = False,
+    events = None,
+    enable_auto_record: bool = False,
+)->None:
+    """
+    control model to just record and eval with recording
+
+    Args:
+        robot (Robot): robot object
+        local_files_only (bool, optional): use local datatset files and not search on the hub. Defaults to False.
+        events (_type_, optional): keyboard button press events. Defaults to None.
+        enable_auto_record (bool, optional): Only enabled during eval with recording. This does not wait for GUI input to start rec. Defaults to False.
+    """        
+    if cfg.resume:
+        logging.info("Resume enabled. Loading existing dataset.")
+        dataset = LeRobotDataset(
+            cfg.repo_id,
+            root=cfg.root,
+        )
+        if len(robot.cameras) > 0:
+            dataset.start_image_writer(
+                num_processes=cfg.num_image_writer_processes,
+                num_threads=cfg.num_image_writer_threads_per_camera * len(robot.cameras),
+            )
+        sanity_check_dataset_robot_compatibility(dataset, robot, cfg.fps, cfg.video)
+    else:
+        # Create empty dataset or load existing saved episodes
+        logging.info("Creating new dataset for recording.")
+        sanity_check_dataset_name(cfg.repo_id, cfg.policy)
+        if Path(cfg.repo_id).exists():
+            raise ValueError(f"Dataset with name {cfg.repo_id} already exists. Please choose a different name or del previous dataset.")
+        dataset = LeRobotDataset.create(
+            cfg.repo_id,
+            cfg.fps,
+            root=cfg.root,
+            robot=robot,
+            use_videos=cfg.video,
+            image_writer_processes=cfg.num_image_writer_processes,
+            image_writer_threads=cfg.num_image_writer_threads_per_camera * len(robot.cameras),
+        )
+    logging.info("Success: Dataset created.")
+
+    # Load pretrained policy
+    logging.info(f"Loading pretrained policy type: {cfg.policy.type}")
+    policy = None if cfg.policy is None else make_policy(cfg.policy, ds_meta=dataset.meta)
+
+    if not robot.is_connected:
+        robot.connect()
+
+    enable_teleoperation = policy is None
+    if cfg.warmup_time_s > 0:
+        logging.info("Warming up robot ...")
+        control_loop(
+            robot=robot,
+            robot_state=robot_state,
+            control_time_s=cfg.warmup_time_s,
+            events=events,
+            fps=cfg.fps,
+            teleoperate=enable_teleoperation,
+        )
+
+    if has_method(robot, "teleop_safety_stop"):
+        robot.teleop_safety_stop()
+
+    recorded_episodes = 0
+    num_episodes -= dataset.num_episodes
+    while True:
+        if recorded_episodes >= num_episodes:
+            break   
+        
+        if enable_auto_record:
+            events["start_recording"] = True    
+
+            logging.info(f"Auto record enabled. Recording episode {dataset.num_episodes}...")    
+        else:
+            logging.info(f"Ready to record episode {dataset.num_episodes}. Press the record button to start recording.")
+        
+        control_loop(
+            robot=robot,
+            robot_state=robot_state, 
+            control_time_s=cfg.episode_time_s,                
+            teleoperate=policy is None,
+            dataset=dataset,
+            policy=policy,
+            fps=cfg.fps,       
+            events=events,
+            single_task=cfg.single_task,
+        )
+
+        if check_force_stop(events): return
+
+        # Execute a few seconds without recording to give time to manually reset the environment
+        # Current code logic doesn't allow to teleoperate during this time.
+        if not events["stop_recording"] and (
+            (dataset.num_episodes < num_episodes - 1) or events["rerecord_episode"]
+        ):
+            logging.info("Reset the environment")
+            events["start_recording"] = False
+
+        if events["rerecord_episode"]:
+            logging.info("Re-record episode")
+            events["rerecord_episode"] = False
+            events["exit_early"] = False
+
+            logging.info("Clearing episode buffer")
+            dataset.clear_episode_buffer()
+            logging.info("Success: Episode buffer cleared.")
+            continue
+        
+        if dataset.episode_buffer is not None:
+            logging.info(f"Saving Episode {dataset.num_episodes}. Please wait ...")
+            dataset.save_episode()
+            logging.info(f"Success: Episode {dataset.num_episodes-1} saved.")
+        else:
+            logging.warning(f"Episode {dataset.num_episodes} buffer is empty. No data was recorded. Forgot to trigger recording ?")
+
+        recorded_episodes += 1
+
+        if events["stop_recording"]:
+            break
+
+        if check_force_stop(events): return
+    
+    logging.info("Stop recording")
+    stop_recording(robot, listener=None, display_cameras=False)   
+
+    if cfg.push_to_hub:
+        logging.info("Pushing dataset to hub. Please wait ...")
+        dataset.push_to_hub(tags=cfg.tags, private=cfg.private)
+        logging.info("Success: Dataset pushed to hub.")
+
+    logging.info("Exiting record loop")
