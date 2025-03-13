@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', function() {
-    fetch('/robot/calibrate/get-arms-name')
+    fetch('/api/calibrate/get-arms-name')
         .then(response => response.json())
         .then(data => {
             const armList = document.getElementById('calibrateAvailableArms');
@@ -53,7 +53,7 @@ function calibrateArm(arm_name) {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    fetch('/robot/calibrate/get-connected-cams-port')
+    fetch('/api/calibrate/get-connected-cams-port')
         .then(response => response.json())
         .then(data => {
             const availableCameras = document.getElementById('availableCameras');

@@ -115,42 +115,12 @@ class RobotController:
     def get_camera_image_buffer(self, cam_id:str) -> np.ndarray:
         return self.robot_state.camera_image_buffers[cam_id]
     
+    def get_available_arms(self) -> List[str]:
+        return self.robot.available_arms
+    
     def set_home(self):        
         self.config.home_pose = self.get_state()     
-    
-    @safe_disconnect
-    def calibrate(self, robot:Robot, arm_name:str, thread_id:str):
-        raise NotImplementedError("calibrate : This function is not implemented for this robot !!")
-
-        if not isinstance(arm_name, str):
-            logging.info(f"calibrate : Invalid input type {arm_name}. Accepted inputs is str() type !!")
-            return False
-
-        if arm_name not in robot.available_arms:
-            logging.info(f"calibrate : Invalid arm name {arm_name}. Please select valid arm name !!")
-            return False
         
-        arm_calib_path = robot.calibration_dir / f"{arm_name}.json"
-        if arm_calib_path.exists():
-            logging.info(f"Removing '{arm_calib_path}'")
-            arm_calib_path.unlink()
-        else:
-            logging.info(f"Calibration file not found '{arm_calib_path}'")
-        
-        if robot.is_connected:
-            robot.disconnect()
-
-        # Calling `connect` automatically runs calibration
-        # when the calibration file is missing
-        logging.info(f"Starting calibration for arm: {arm_name}. Please follow the instructions on the terminal.")
-        robot.connect()
-        robot.disconnect()
-        logging.info("Success: Calibration is done.")
-
-        # stop calibration thread
-        self.running_threads[thread_id].join()
-        del self.running_threads[thread_id]   
-    
     def run_teleop(self, cfg: TeleoperateControlConfig):
         """
         run teleop control mode

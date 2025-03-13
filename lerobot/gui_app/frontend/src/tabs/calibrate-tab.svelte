@@ -26,7 +26,7 @@ async function calibrateArm(arm_name) {
 onMount(async () => {
     // Fetch available arm names
     try {
-        const response = await fetch('/robot/calibrate/get-arms-name');
+        const response = await fetch('/api/calibrate/get-arms-name');
         const data = await response.json();
         arms = data;
     } catch (error) {
@@ -35,7 +35,7 @@ onMount(async () => {
     
     // Fetch connected camera information
     try {
-        const response = await fetch('/robot/calibrate/get-connected-cams-port');
+        const response = await fetch('/api/calibrate/get-connected-cams-port');
         const data = await response.json();
         cameras = data;
     } catch (error) {

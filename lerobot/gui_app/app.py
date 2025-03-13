@@ -409,19 +409,13 @@ async def update_record_config(
     )
 
 #### calibrate api ####
-@app.get("/robot/calibrate/get-arms-name")
+@app.get("/api/calibrate/get-arms-name")
 def get_arms_name():
-    return robot_controller.robot.available_arms
+    return robot_controller.get_available_arms()
 
-@app.get("/robot/calibrate/get-connected-cams-port")
+@app.get("/api/calibrate/get-connected-cams-port")
 def get_connected_cams_port():
     return find_cameras()
-
-@app.get("/robot/calibrate/{arm_name}")
-def calibrate_arm(arm_name: str):
-    logging.info(f"app : Triggering calibration for arm: {arm_name}")
-    robot_controller.run_calibration(arm_name)
-    return True
 
 def handle_interrupt(signum, frame):
     global is_shutdown, dataset_visualizer  
