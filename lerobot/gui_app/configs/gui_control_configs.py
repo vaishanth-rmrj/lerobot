@@ -6,20 +6,10 @@ from lerobot.common.robot_devices.robots.configs import RobotConfig
 from lerobot.configs import parser
 from lerobot.configs.policies import PreTrainedConfig
 
-
-@dataclass
-class CalibrateControlConfig:
-    # List of arms to calibrate (e.g. `--arms='["left_follower","right_follower"]' left_leader`)
-    arms: list[str] | None = None
-
-
 @dataclass
 class TeleoperateControlConfig:
     # Limit the maximum frames per second. By default, no limit.
     fps: int | None = 30
-    teleop_time_s: float | None = None
-    # Display all cameras on screen
-    display_cameras: bool = False
 
 
 @dataclass
@@ -135,11 +125,6 @@ class GUIControlPipelineConfig:
     robot: RobotConfig
     teleoperate_control: TeleoperateControlConfig = field(default_factory=TeleoperateControlConfig)
     record_control: RecordControlConfig = field(default_factory=RecordControlConfig)
-    calibrate_control: CalibrateControlConfig = field(default_factory=CalibrateControlConfig)
+    eval_control: EvalControlConfig = field(default_factory=EvalControlConfig)
     replay_control: ReplayControlConfig = field(default_factory=ReplayControlConfig)
     home_pose: List[float | None] = None
-
-    @classmethod
-    def __get_path_fields__(cls) -> list[str]:
-        """This enables the parser to load config from the policy using `--policy.path=local/dir`"""
-        return ["control.policy"]
