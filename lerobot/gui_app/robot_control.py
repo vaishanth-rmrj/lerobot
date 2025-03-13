@@ -27,6 +27,19 @@ from lerobot.common.robot_devices.control_utils import (
 from lerobot.gui_app.configs.gui_control_configs import GUIControlPipelineConfig
 from lerobot.common.robot_devices.robots.configs import RobotConfig
 from lerobot.gui_app.utils import init_image_buffers
+from lerobot.gui_app.control_utils import (
+    control_loop,
+    record,
+    eval,
+)
+from lerobot.gui_app.configs.gui_control_configs import (
+    CalibrateControlConfig,
+    GUIControlPipelineConfig,
+    RecordControlConfig,
+    EvalControlConfig,
+    ReplayControlConfig,
+    TeleoperateControlConfig,
+)
 
 def reinit_event_flags(events:Dict) -> None:
     events["force_stop"] = False
@@ -66,8 +79,6 @@ class RobotControl:
             state=[None] * self.num_joints,
             action=[None] * self.num_joints
         )
-    
-    
     
     def get_fps(self):
         return self.robot_state.camera_fps
@@ -161,7 +172,7 @@ class RobotControl:
         self.running_threads[thread_id].join()
         del self.running_threads[thread_id]   
     
-    def run_teleop(self, config: DictConfig):
+    def run_teleop(self, cfg: TeleoperateControlConfig):
         """
         run teleop control mode
 
@@ -170,15 +181,16 @@ class RobotControl:
         """
 
         logging.info("Started teleop control XD")
-        self.control_loop(
+        control_loop(
             self.robot,
-            fps=config.fps,
+            self.robot_state,
+            fps=cfg.fps,
             teleoperate=True,
             events=self.events,
         )   
         self.events["force_stop"] = False
         
-    def run_record(self, config: DictConfig):
+    def run_record(self, cfg: RecordControlConfig):
         """
         run record control mode
 
@@ -186,28 +198,16 @@ class RobotControl:
             config (DictConfig): record config
         """
         logging.info("Started record control XD")
-        self.record(
-            robot = self.robot,
-            root = config.root,
-            repo_id = config.repo_id,
-            single_task = config.single_task,
-            fps = config.fps,
-            episode_time_s = config.episode_time_s,
-            num_episodes = config.num_episodes,
-            video = True,
-            run_compute_stats = config.run_compute_stats,
-            push_to_hub = config.push_to_hub,
-            tags = config.tags,
-            num_image_writer_processes = config.num_image_writer_processes,
-            num_image_writer_threads_per_camera = config.num_image_writer_threads_per_camera,
-            play_sounds = False,
-            resume = config.resume,
-            local_files_only = config.local_files_only,
+        record(
+            self.robot,
+            self.robot_state,
+            cfg = cfg,
+            local_files_only=False, # not implemented
             events=self.events,
         )
         self.events["force_stop"] = False
 
-    def run_eval(self, config: DictConfig):
+    def run_eval(self, cfg: EvalControlConfig):
         """
         run eval control mode with or without recording episodes
 
@@ -215,39 +215,13 @@ class RobotControl:
             config (DictConfig): eval config
         """
         logging.info("Started eval control XD")
-        if not config.record_eval_episodes:
-            self.eval_policy(
-                robot = self.robot,
-                pretrained_policy_name_or_path = config.pretrained_policy_path,
-                fps= config.fps,
-                warmup_time_s = config.warmup_time_s,
-                episode_time_s = config.episode_time_s,
-                events = self.events,
-            )
-        else:
-            # evalutate policy and record episodes
-            self.record(
-                robot = self.robot,
-                pretrained_policy_name_or_path = config.pretrained_policy_path,
-                root = config.root,
-                repo_id = config.repo_id,
-                single_task = config.single_task,
-                fps = config.fps,
-                episode_time_s = config.episode_time_s,
-                warmup_time_s= config.warmup_time_s,
-                num_episodes = config.num_episodes,
-                video = True,
-                run_compute_stats = True,
-                push_to_hub = config.push_to_hub,
-                tags = config.tags,
-                num_image_writer_processes = config.num_image_writer_processes,
-                num_image_writer_threads_per_camera = config.num_image_writer_threads_per_camera,
-                play_sounds = False,
-                local_files_only = True,
-                events=self.events,
-                enable_auto_record = True, # only enable auto record for eval ds recording
-            )
-        
+
+        eval(
+            self.robot,
+            self.robot_state,
+            cfg=cfg,
+            events=self.events,
+        )        
         self.events["force_stop"] = False
     
     def run_calibration(self, arm_name:str):
@@ -257,20 +231,7 @@ class RobotControl:
         Args:
             arm_name (str): name of the arm to calibrate
         """
-        if len(self.running_threads) > 0:
-            logging.info("select_robot_control_mode : Background threads running. Please stop other threads / processes !!")
-            return False
-        
-        thread_id = "calibrate"
-        logging.info("Started calibration control XD")
-        thread = threading.Thread(
-            target=self.calibrate, 
-            daemon=True, 
-            args=[self.robot, arm_name, thread_id]
-        )
-
-        self.running_threads[thread_id] = thread
-        thread.start()
+        raise NotImplementedError("run_calibration : This function is not implemented for this robot !!")
     
     def home_robot(self, fps:int = 30, abs_tol:int = 5.0):
 
@@ -355,20 +316,20 @@ class RobotControl:
         if mode == "teleop":
             thread = threading.Thread(
                 target=self.run_teleop,                  
-                args=[self.config.teleop],
+                args=[self.config.teleoperate_control],
                 daemon=True,
             )
         elif mode == "record":
             thread = threading.Thread(
                 target=self.run_record, 
                 daemon=True, 
-                args=[self.config.record]
+                args=[self.config.record_control]
             )
         elif mode == "eval":
             thread = threading.Thread(
                 target=self.run_eval, 
                 daemon=True, 
-                args=[self.config.eval]
+                args=[self.config.eval_control]
             )
         else:
             logging.info(f"select_robot_control_mode : Invalid control mode {mode}. Please select valid control mode !!")
@@ -400,10 +361,8 @@ class RobotControl:
             logging.info(f"stop_threads : No background threads running. XD")
         
         # resetting events flag
-        reinit_event_flags(self.events)
-        
-        return True if len(self.running_threads) > 0 else False
-    
+        reinit_event_flags(self.events)        
+        return True if len(self.running_threads) > 0 else False    
     
     def __del__(self):
         if self.robot.is_connected:
