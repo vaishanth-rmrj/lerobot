@@ -127,4 +127,4 @@ class GUIControlPipelineConfig:
     record_control: RecordControlConfig = field(default_factory=RecordControlConfig)
     eval_control: EvalControlConfig = field(default_factory=EvalControlConfig)
     replay_control: ReplayControlConfig = field(default_factory=ReplayControlConfig)
-    home_pose: List[float | None] = None
+    home_pose: List[float] = field(default_factory=list)
