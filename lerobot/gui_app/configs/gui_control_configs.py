@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import List
 
 from lerobot.common.robot_devices.robots.configs import RobotConfig
 from lerobot.configs import parser
@@ -146,6 +147,7 @@ class GUIControlPipelineConfig:
     record_control: RecordControlConfig = field(default_factory=RecordControlConfig)
     calibrate_control: CalibrateControlConfig = field(default_factory=CalibrateControlConfig)
     replay_control: ReplayControlConfig = field(default_factory=ReplayControlConfig)
+    home_pose: List[float | None] = None
 
     @classmethod
     def __get_path_fields__(cls) -> list[str]:

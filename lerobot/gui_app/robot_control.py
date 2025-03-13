@@ -4,6 +4,7 @@ import time
 import threading
 import logging
 from pathlib import Path
+from dataclasses import dataclass
 from typing import List, Dict
 
 import torch
@@ -11,11 +12,8 @@ from omegaconf.dictconfig import DictConfig
 
 # project imports
 from lerobot.common.robot_devices.control_utils import busy_wait 
-from lerobot.common.utils.utils import init_hydra_config
-from lerobot.common.robot_devices.robots.factory import make_robot
+from lerobot.common.robot_devices.robots.utils import Robot, make_robot_from_config
 from lerobot.common.datasets.lerobot_dataset import LeRobotDataset
-from lerobot.common.datasets.image_writer import safe_stop_image_writer
-from lerobot.common.robot_devices.robots.utils import Robot
 from lerobot.common.robot_devices.utils import safe_disconnect
 from lerobot.common.robot_devices.control_utils import (
     has_method,
@@ -26,81 +24,63 @@ from lerobot.common.robot_devices.control_utils import (
     stop_recording,
     predict_action,
 )
+from lerobot.gui_app.configs.gui_control_configs import GUIControlPipelineConfig
+from lerobot.common.robot_devices.robots.configs import RobotConfig
+from lerobot.gui_app.utils import init_image_buffers
+
+def reinit_event_flags(events:Dict) -> None:
+    events["force_stop"] = False
+    events["start_recording"] = False
+    events["control_loop_active"] = False
+    events["exit_early"] = False
+    events["rerecord_episode"] = False
+    events["stop_recording"] = False
+
+@dataclass
+class RobotState:
+    type:str
+    camera_image_buffers: Dict[str, np.ndarray]
+    camera_fps: float
+    state: List[float]
+    action: List[float]
 
 class RobotControl:
     def __init__(
             self,
-            config: DictConfig
+            config: GUIControlPipelineConfig
         ) -> None:
 
         self.config = config
         self.running_threads = {}
 
         self.events = {}
-        if self.events is not None:
-            # add additional event flags
-            self.events["force_stop"] = False
-            self.events["start_recording"] = False
-            self.events["control_loop_active"] = False
-            self.events["exit_early"] = False
-            self.events["rerecord_episode"] = False
-            self.events["stop_recording"] = False
+        reinit_event_flags(self.events)            
 
         self.robot = None
-        self.init_robot(self.config.robot_cfg_file)  
-
-        num_joints, self.joint_names = self.robot.motor_features["observation.state"]["shape"][0] ,self.robot.motor_features["observation.state"]["names"]        
-        self.state = ["NA"] * num_joints
-        self.action = ["NA"] * num_joints
-
-        self.cams_image_buffer = self.init_cam_image_buffers()
-        self.cam_fps = 30
-    
-    def reinit_event_flags(self, events) -> None:
-        events["force_stop"] = False
-        events["start_recording"] = False
-        events["control_loop_active"] = False
-    
-    def init_cam_image_buffers(self):
-        """
-        init cam image buffers
-        """
-        cams_image_buffers = {}
-
-        w, h = 640, 480
-        no_feed_img = cv2.putText(
-            img=np.zeros((h, w, 3), dtype=np.uint8),
-            text="No feed!",
-            org=(w // 2 - 70, h // 2),
-            fontFace=cv2.FONT_HERSHEY_SIMPLEX,
-            fontScale=1.0,
-            color=(0, 0, 255),
-            thickness=2, 
-            lineType=cv2.LINE_AA
-        )
-        ret, encoded_no_feed_img = cv2.imencode('.jpg', no_feed_img)
-        for cam_info in self.get_camera_info():
-            cams_image_buffers["observation.images."+str(cam_info["name"])] = encoded_no_feed_img
+        self.init_robot(self.config.robot) 
         
-        return cams_image_buffers
+        self.robot_state = RobotState(
+            type=self.config.robot.type,
+            camera_image_buffers=init_image_buffers((640, 480), self.get_camera_info()),
+            camera_fps=30,
+            state=[None] * self.num_joints,
+            action=[None] * self.num_joints
+        )
+    
+    
     
     def get_fps(self):
-        return self.cam_fps
+        return self.robot_state.camera_fps
     
-    def init_robot(self, config_path: str)-> Robot:
+    def init_robot(self, config: RobotConfig)-> Robot:
         """
-        init robot object from the provided config file using hydra
-
-        Args:
-            config_path (str): path to config file
+        make robot object from the provided config
         """
-        logging.info(f"Provided robot config file: {config_path}. Initializing Robot.")
-        robot_cfg = init_hydra_config(config_path)
         if hasattr(self, 'robot') and self.robot is not None:
             logging.info("Deleting previous robot object.")
             self.robot.__del__()
         
-        self.robot = make_robot(robot_cfg)
+        self.robot = make_robot_from_config(config)
     
     @property
     def num_cameras(self):
@@ -110,20 +90,24 @@ class RobotControl:
     def is_connected(self):
         return self.robot.is_connected
     
+    @property
+    def num_joints(self):
+        num_joints = self.robot.motor_features["observation.state"]["shape"][0]   
+        if isinstance(num_joints, torch.Tensor):
+            return num_joints.item()
+        return num_joints
+    
     def get_joint_names(self):
-        if isinstance(self.joint_names, torch.Tensor):
-            return self.joint_names.tolist()
-        return self.joint_names
+        joint_names = self.robot.motor_features["observation.state"]["names"] 
+        if isinstance(joint_names, torch.Tensor):
+            return joint_names.tolist()
+        return joint_names
     
     def get_state(self):
-        if isinstance(self.state, torch.Tensor):
-            return self.state.tolist()
-        return self.state
+        return self.robot_state.state
     
     def get_action(self):
-        if isinstance(self.action, torch.Tensor):
-            return self.action.tolist()
-        return self.action
+        return self.robot_state.action
     
     def get_camera_info(self) -> List:
         """
@@ -137,125 +121,12 @@ class RobotControl:
             cam_info.append({
                 "id": cam_id,
                 "name": str(cam_name),
-                "video_url": "/robot/get-cam-feed/observation.images."+str(cam_name)
+                "video_url": f"/robot/get-cam-feed/observation.images.{cam_name}",
             })        
         return cam_info
     
     def set_home(self):        
-        self.config.home_pose = self.get_state()
-        
-    def check_force_stop(self, events):
-        if events["force_stop"]:
-            logging.info("Force Stop Triggered !!")            
-            return True
-        else:
-            return False
-    
-    @safe_stop_image_writer
-    def control_loop(
-            self,
-            robot:Robot,
-            control_time_s:int=None,
-            teleoperate:bool=False,
-            display_cameras:bool=False,
-            dataset: LeRobotDataset | None = None,
-            events:Dict=None,
-            policy=None,
-            device=None,
-            use_amp=None,
-            fps:int=None,
-        ) -> None:
-        """
-        main control loop to run different control modes.
-
-        Args:
-            robot (Robot): robot object
-            control_time_s (int, optional): total time to execute the control loop. Defaults to None.
-            teleoperate (bool, optional): enable robot teleop. Defaults to False.
-            display_cameras (bool, optional): Not req since cam feed is displayed in the GUI. Defaults to False.
-            dataset (LeRobotDataset | None, optional): lerobot dataset object. Defaults to None.
-            events (Dict, optional): keyboard btn press events. Defaults to None.
-            policy (optional): policy object for evaluation. Defaults to None.
-            device (optional): Device to run the policy on. Defaults to None.
-            use_amp (optional): ???. Defaults to None.
-            fps (int, optional): FPS to execute the control loop. Defaults to None.
-        """
-        # re-initialize event flags to prevent
-        # accidental loop triggers from prev executions
-        self.reinit_event_flags(events)
-
-        if not robot.is_connected:
-            robot.connect()
-
-        if events is None:
-            events = {"exit_early": False}
-
-        if control_time_s is None:
-            control_time_s = float("inf")
-        
-        if teleoperate and policy is not None:
-            raise ValueError("When `teleoperate` is True, `policy` should be None.")
-        
-        if dataset is not None and fps is not None and dataset.fps != fps:
-            raise ValueError(f"The dataset fps should be equal to requested fps ({dataset['fps']} != {fps}).")
-
-        timestamp = 0
-        start_episode_t = time.perf_counter()
-        events["control_loop_active"] = True
-        logging.info("Started control loop.")
-        observation, action = None, None
-        while timestamp < control_time_s:
-            start_loop_t = time.perf_counter()
-
-            if teleoperate:
-                observation, action = robot.teleop_step(record_data=True)
-            else:
-                observation = robot.capture_observation()
-
-                if policy is not None:
-                    pred_action = predict_action(observation, policy, device, use_amp)
-                    # Action can eventually be clipped using `max_relative_target`,
-                    # so action actually sent is saved in the dataset.
-                    action = robot.send_action(pred_action)
-                    action = {"action": action}
-            
-            if dataset is not None and events["start_recording"]:
-                frame = {**observation, **action}
-                dataset.add_frame(frame)
-
-            image_keys = [key for key in observation if "image" in key]
-            for key in image_keys:            
-                cam_image = cv2.cvtColor(observation[key].numpy(), cv2.COLOR_RGB2BGR)
-                ret, self.cams_image_buffer[key] = cv2.imencode('.jpg', cam_image)
-                self.cam_fps = fps
-                if not ret:
-                    logging.info(f"Control Loop: Error encoding cam:{key} feed")
-            
-            # update states of follower and leader robot (round to 2 decimal places)
-            # FUTURE: update this to round to 2 decimal places for optimization
-            if observation: self.state = observation["observation.state"]           
-            if action: self.action = action["action"]
-
-            if fps is not None:
-                dt_s = time.perf_counter() - start_loop_t
-                busy_wait(1 / fps - dt_s)
-            
-            dt_s = time.perf_counter() - start_loop_t
-            # TODO: update implementation for gui
-            # log_control_info(robot, dt_s, fps=fps)
-
-            timestamp = time.perf_counter() - start_episode_t
-            if events["exit_early"]:
-                logging.info("Early exit triggered. Exiting while loop !!")
-                events["exit_early"] = False
-                self.cams_image_buffer = self.init_cam_image_buffers()
-                break
-            
-            if self.check_force_stop(events): 
-                self.cams_image_buffer = self.init_cam_image_buffers()
-                break
-        
-        events["control_loop_active"] = False                
+        self.config.home_pose = self.get_state()                    
 
     def record(
         self,
@@ -803,7 +674,7 @@ class RobotControl:
             logging.info(f"stop_threads : No background threads running. XD")
         
         # resetting events flag
-        self.reinit_event_flags(self.events)
+        reinit_event_flags(self.events)
         
         return True if len(self.running_threads) > 0 else False
     
