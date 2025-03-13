@@ -1,6 +1,8 @@
 import logging
 from datetime import datetime
 from pathlib import Path
+import cv2 
+import numpy as np
 from typing import Dict, List
 
 from omegaconf import OmegaConf
@@ -217,3 +219,15 @@ def get_pretrained_models_info(output_dir_path: str) -> List[Dict]:
             })
 
     return models_info
+
+def init_image_buffers(img_size:tuple, cam_info:Dict, display_text:str="No feed!") -> Dict[str, bytes]:
+    """
+    init cam image buffers
+    """
+    w, h = img_size
+    no_feed_img = cv2.putText(
+        img=np.zeros((h, w, 3), dtype=np.uint8), text=str(display_text), org=(w // 2 - 70, h // 2),
+        fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=1.0, color=(0, 0, 255), thickness=2, lineType=cv2.LINE_AA
+    )    
+    image_buffers = { f"observation.images.{info["name"]}": cv2.imencode('.jpg', no_feed_img) for info in cam_info}
+    return image_buffers
