@@ -12,6 +12,7 @@ import ActionBar from "./components/action-bar.svelte";
 import LogsDisplay from "./components/logs-display.svelte";
 import ErrorToast from "./components/error-toast.svelte";
 import AlertToast from "./components/alert-toast.svelte";
+import RobotConfigSelect from './components/robot-config-select.svelte';
 
 // tabs
 import TeleopTab from "./tabs/teleop-tab.svelte";
@@ -64,6 +65,7 @@ onDestroy(() => {
       <div class="container p-4">
 
         <ActionBar />
+        <RobotConfigSelect />
 
         <ul class="nav nav-tabs" id="myTab" role="tablist">
             <li class="nav-item " role="presentation">

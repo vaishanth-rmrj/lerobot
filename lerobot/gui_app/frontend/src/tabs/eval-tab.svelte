@@ -1,7 +1,6 @@
 <script>
 import { onMount } from 'svelte';
 import StopControlBtn from '../components/stop-control-btn.svelte';
-import RobotConfigSelect from '../components/robot-config-select.svelte';
 import PretrainedModelSelect from '../components/pretrained-model-select.svelte';
 import DatasetRootdirInput from '../components/dataset-rootdir-input.svelte';
 
@@ -122,8 +121,7 @@ onMount(async () => {
                   action="/robot/eval/config-update"
                   method="post"
                   on:submit={submitEvalConfig}>
-  
-              <RobotConfigSelect />  
+   
               <PretrainedModelSelect policyPath={evalPolicyPath}/>              
               <hr>
   

@@ -14,13 +14,14 @@ onMount(async () => {
 });
 </script>
   
-<div class="mb-3">
-    <label for="robotConfigSelect" class="form-label">Robot Config</label>
-    <select id="robotConfigSelect" class="form-select" name="robot_config">
-        {#each configs as config}
-        <option value={config}>{config}</option>
-        {/each}
-    </select>
-    <small class="form-text">Path to robot config file</small>
+<div class="card mb-3" style="background-color: var(--bs-gray-800)!important">
+    <div class="card-body">
+        <label for="robotConfigSelect" class="form-label">Robot Type</label>
+        <select id="robotConfigSelect" class="form-select" name="robot_config" disabled>
+            {#each configs as config}
+            <option value={config}>{config}</option>
+            {/each}
+        </select>
+    </div>    
 </div>
   

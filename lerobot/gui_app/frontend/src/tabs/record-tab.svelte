@@ -1,7 +1,6 @@
 <script>
 import { onMount } from 'svelte';
 import StopControlBtn from '../components/stop-control-btn.svelte';
-import RobotConfigSelect from '../components/robot-config-select.svelte';
 import DatasetRootdirInput from '../components/dataset-rootdir-input.svelte';
 
 // Form fields for record configuration.
@@ -180,10 +179,7 @@ async function submitRecordConfig(event) {
                   action="/robot/record/config-update"
                   method="post"
                   on:submit={submitRecordConfig}>
-  
-              <RobotConfigSelect />  
-              <hr>
-              
+                
               <DatasetRootdirInput rootDirInputName="root_dir" rootDir={recordRoot} />
   
               <label for="recordRepoID" class="form-label mt-4">Repo ID</label>

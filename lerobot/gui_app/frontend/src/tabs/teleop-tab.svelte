@@ -3,7 +3,6 @@ import { onMount } from 'svelte';
 import { errorMessages } from '../stores/error-msg-store';
 import { alertMessages } from '../stores/alert-msg-store';
 import StopControlBtn from '../components/stop-control-btn.svelte';
-import RobotConfigSelect from '../components/robot-config-select.svelte';
 
 let robotConfig = "";
 let fps = $state(30);
@@ -93,9 +92,6 @@ onMount(async () => {
                 action="/robot/telop/config-update"
                 method="post"
                 onsubmit={updateTeleopConfig}>
-
-                <RobotConfigSelect />
-                <hr>
 
                 <label for="teleopFPS" class="form-label mt-2">FPS</label>
                 <input
