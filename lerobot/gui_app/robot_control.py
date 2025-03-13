@@ -182,6 +182,11 @@ class RobotController:
         """
         raise NotImplementedError("run_calibration : This function is not implemented for this robot !!")
     
+    def reset_motor_accel(self) -> None:
+        # reset the motor acceleration val
+        for name in self.robot.follower_arms:
+            self.robot.follower_arms[name].write("Acceleration", 254)
+
     def home_robot(self, fps:int = 30, abs_tol:int = 5.0):
 
         # TODO: need to somehow store home pose for each follower robot
@@ -199,13 +204,19 @@ class RobotController:
         for name in self.robot.follower_arms:
             self.robot.follower_arms[name].write("Acceleration", 2)
 
-        home_pose = []
+        home_pose, curr_pose = [], []
         for name in self.robot.follower_arms:
             if name in homing_joint_pos:
                 home_pose.append(homing_joint_pos[name])
-        home_pose = torch.cat(home_pose)
+                curr_pose.append(torch.from_numpy(self.robot.follower_arms[name].read("Present_Position")))
+        home_pose, curr_pose = torch.cat(home_pose), torch.cat(curr_pose)
 
-        logging.info(f"Sending home pose to robot: {home_pose}")
+        if torch.allclose(home_pose, curr_pose, atol=abs_tol):
+            logging.warning("Robot already in Home Pose!!")
+            self.reset_motor_accel()
+            return True
+
+        logging.info(f"Sending home pose to robot")
         self.robot.send_action(home_pose)
                 
         timestamp = 0.0
@@ -238,10 +249,7 @@ class RobotController:
 
             timestamp = time.perf_counter() - start_t
         
-        # reset the motor acceleration val
-        for name in self.robot.follower_arms:
-            self.robot.follower_arms[name].write("Acceleration", 254)
-
+        self.reset_motor_accel()
         return True
 
     def select_robot_control_mode(self, mode:str):

@@ -50,10 +50,11 @@ def update_robot_state(robot_state:RobotState, observation:Dict, action:Dict, fp
     else:
         robot_state.state = observation["observation.state"]   
 
-    if isinstance(action["action"], torch.Tensor):        
-        robot_state.action = action["action"].tolist()  
-    else:
-        robot_state.action = action["action"] 
+    if action is not None:
+        if isinstance(action["action"], torch.Tensor):        
+            robot_state.action = action["action"].tolist()  
+        else:
+            robot_state.action = action["action"] 
 
 def reset_camera_image_buffers(robot_state:RobotState) -> None:
     img_size = robot_state.camera_image_buffers["img_size"]
@@ -148,7 +149,7 @@ def control_loop(
         if teleoperate:
             observation, action = robot.teleop_step(record_data=True)
         else:
-            observation = robot.capture_observation()
+            observation, action = robot.capture_observation(), None
 
             if policy is not None:
                 pred_action = predict_action(
@@ -257,6 +258,7 @@ def record(
         robot.teleop_safety_stop()
 
     recorded_episodes = 0
+    num_episodes = cfg.num_episodes
     num_episodes -= dataset.num_episodes
     while True:
         if recorded_episodes >= num_episodes:
