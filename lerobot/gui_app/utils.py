@@ -3,14 +3,26 @@ from datetime import datetime
 from pathlib import Path
 import cv2 
 import numpy as np
+from dataclasses import dataclass
 from typing import Dict, List
 
 from omegaconf import OmegaConf
 from omegaconf.dictconfig import DictConfig
+import draccus
 
 # project imports
-from lerobot.common.utils.utils import init_hydra_config
-from lerobot.gui_app.robot_control import RobotControl
+# from lerobot.gui_app.robot_control import RobotController
+from lerobot.gui_app.configs.gui_control_configs import GUIControlPipelineConfig
+
+draccus.set_config_type("yaml")
+
+@dataclass
+class RobotState:
+    type:str
+    camera_image_buffers: Dict[str, np.ndarray]
+    camera_fps: float
+    state: List[float]
+    action: List[float]
 
 # Custom handler to store logs in a list
 class ListHandler(logging.Handler):
@@ -94,7 +106,7 @@ def check_config_change(dict_config:Dict, hydra_config:DictConfig):
     
     return differences
 
-def load_config(config_path:str = "lerobot/gui_app/configs/mode_cfg.yaml", load_cache:bool = True) -> DictConfig:
+def load_config(robot_type:str, cache_path:str = ".cache/gui_app/gui_control_pipeline_config.yaml", load_cache:bool = True) -> DictConfig:
     """
     load control modes config from file or load previosuly save config cache
 
@@ -105,25 +117,35 @@ def load_config(config_path:str = "lerobot/gui_app/configs/mode_cfg.yaml", load_
     Returns:
         DictConfig: omega config obj
     """
-
+    
+    is_cache_available = False
     if load_cache:
-        config_filename = Path(config_path).name
-        cache_file = (Path(__file__).resolve().parent.parent.parent / ".cache/gui_app" / config_filename).resolve()
-        if cache_file.exists():
-            logging.info("App cache found. Loading config from cache.")        
-            cfg = init_hydra_config(cache_file)
-            return cfg
-        else:
-            logging.info("App cache not found. Creating cache from config!!")  
+        cache_path = Path(cache_path).resolve()
+        if cache_path.exists():
+            logging.info(f"Loading config from cache: {cache_path}")
+            is_cache_available = True
 
-    cfg = init_hydra_config(config_path) 
+    if is_cache_available:
+        cfg = draccus.parse(
+            config_class=GUIControlPipelineConfig, 
+            config_path=str(cache_path), 
+            args=[f"--robot.type={robot_type}"],
+        )
+    else:
+        logging.info("App cache not found. Creating cache from config!!")  
+        cfg = draccus.parse(
+            config_class=GUIControlPipelineConfig,
+            args=[f"--robot.type={robot_type}"],
+        )
+        # cache the config as yaml file
+        draccus.dump(cfg, open(str(cache_path),'w'))
     return cfg
 
 def compare_update_cache_config(
         prev_config: DictConfig, 
         new_config:Dict, 
         new_robot_config:str, 
-        controller:RobotControl, 
+        controller, 
         mode:str
     ) -> None:
     """
@@ -132,7 +154,7 @@ def compare_update_cache_config(
         prev_config (DictConfig): config from previous session
         new_config (Dict): updated config
         new_robot_config (str): updated robot config path
-        controller (RobotControl)
+        controller (RobotController)
         mode (str): control mode type
     """
     updated_attrs = check_config_change(new_config, prev_config)
@@ -229,5 +251,13 @@ def init_image_buffers(img_size:tuple, cam_info:Dict, display_text:str="No feed!
         img=np.zeros((h, w, 3), dtype=np.uint8), text=str(display_text), org=(w // 2 - 70, h // 2),
         fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=1.0, color=(0, 0, 255), thickness=2, lineType=cv2.LINE_AA
     )    
-    image_buffers = { f"observation.images.{info["name"]}": cv2.imencode('.jpg', no_feed_img) for info in cam_info}
+    image_buffers = { f"observation.images.{info['name']}": cv2.imencode('.jpg', no_feed_img) for info in cam_info}
     return image_buffers
+
+def reinit_event_flags(events:Dict) -> None:
+    events["force_stop"] = False
+    events["start_recording"] = False
+    events["control_loop_active"] = False
+    events["exit_early"] = False
+    events["rerecord_episode"] = False
+    events["stop_recording"] = False
