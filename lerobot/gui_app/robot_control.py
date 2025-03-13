@@ -130,6 +130,7 @@ class RobotControl:
     
     @safe_disconnect
     def calibrate(self, robot:Robot, arm_name:str, thread_id:str):
+        raise NotImplementedError("calibrate : This function is not implemented for this robot !!")
 
         if not isinstance(arm_name, str):
             logging.info(f"calibrate : Invalid input type {arm_name}. Accepted inputs is str() type !!")
