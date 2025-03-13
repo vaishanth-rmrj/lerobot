@@ -4,6 +4,7 @@ import signal
 import logging
 import asyncio
 import yaml
+from dataclasses import asdict
 from typing import Dict, List, Optional
 
 from omegaconf import OmegaConf
@@ -77,7 +78,7 @@ async def get_cam_feed(device_id: str):
             start_loop_t = time.perf_counter()
             try:
                 if robot_controller:
-                    yield (b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' + robot_controller.cams_image_buffer[device_id].tobytes() + b'\r\n')
+                    yield (b'--frame\r\n' b'Content-Type: image/jpeg\r\n\r\n' + robot_controller.get_camera_image_buffer(device_id).tobytes() + b'\r\n')
                     
                 fps = robot_controller.get_fps()
                 dt_s = time.perf_counter() - start_loop_t
@@ -167,8 +168,7 @@ async def reset_robot():
         logging.info(f"app : {active_threads} background threads running. Stop the threads before proceding !!")
         return {"status": "fail"}
     
-    curr_cfg = load_config()
-    robot_controller.init_robot(curr_cfg.robot_cfg_file) 
+    robot_controller.init_robot(robot_controller.config.robot) 
     return {"status": "success"}
 
 @app.get("/robot/get-control-config/{mode}")
@@ -177,21 +177,19 @@ async def get_config(mode:str):
 
     config = None
     if mode == "teleop":
-        config = robot_controller.config.teleop
+        config = robot_controller.config.teleoperate_control
     elif mode == "record":
-        config = robot_controller.config.record
+        config = robot_controller.config.record_control
     elif mode == "eval":
-        config = robot_controller.config.eval
+        config = robot_controller.config.eval_control
     elif mode == "replay":
         raise NotImplementedError("Relay Config fetch not implemented !!!")
-    elif mode == "calibrate":
-        raise NotImplementedError("Calibrate Config fetch not implemented !!!")
     else:
         logging.warning(f"Unkown config mode triggered in backend: {mode}")
         return {"error": f"Invalid mode: {mode}"}
     
-    dict_cfg = OmegaConf.to_container(config, resolve=True)
-    dict_cfg['robot_config'] = robot_controller.config.robot_cfg_file
+    dict_cfg = asdict(config)
+    dict_cfg['robot_config'] = robot_controller.config.robot.type
     return dict_cfg    
 
 @app.post("/api/check-directory-exists")
@@ -318,7 +316,7 @@ async def update_teleop_config(robot_config: str = Form(...), fps: int = Form(..
         "fps": fps,
     }
     compare_update_cache_config(
-        prev_config = robot_controller.config.teleop, 
+        prev_config = robot_controller.config.teleoperate_control, 
         new_config = new_teleop_config, 
         new_robot_config = robot_config, 
         controller = robot_controller,
