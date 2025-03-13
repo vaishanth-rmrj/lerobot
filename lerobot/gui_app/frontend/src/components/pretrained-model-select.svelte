@@ -39,11 +39,19 @@ onMount(async () => {
                 availabelPretrainedmodels = availabelPretrainedmodels?.sort();
 
                 if (policyPath !== null) {
+                    console.log("Policy path not null");
                     availabelPretrainedmodels.forEach(model => {
                         if (model.date+"/"+model.run_name === policyRunPath) {
                             availableCheckpoints = model.checkpoints?.sort();
                         }
                     });
+                } else {
+                    availableCheckpoints = availabelPretrainedmodels[0].checkpoints?.sort();
+                    selectedCheckpoint = availableCheckpoints[0];    
+                    selectedPolicyPath = availabelPretrainedmodels[0].dir_path;
+                    selectedPolicyFullPath = `${selectedPolicyPath}/checkpoints/${selectedCheckpoint}/pretrained_model`;
+                    
+                    console.log(availableCheckpoints);
                 }
             } else {
                 console.error('Error fetching availabel pretrained models:', res.statusText);
@@ -62,14 +70,17 @@ function handleModelChange(event) {
     availableCheckpoints = availabelPretrainedmodels[selectedIndex].checkpoints.sort();
 
     selectedPolicyPath = event.target.value;
+    console.log("selectedPolicyPath", selectedPolicyPath);
     selectedCheckpoint = availableCheckpoints[0];    
     selectedPolicyFullPath = `${selectedPolicyPath}/checkpoints/${selectedCheckpoint}/pretrained_model`;
+    console.log("selectedPolicyFullPath", selectedPolicyFullPath);
 }
 
 // Update the selected checkpoint value
 function handleCheckpointChange(event) {
     selectedCheckpoint = event.target.value;
     selectedPolicyFullPath = `${selectedPolicyPath}/checkpoints/${selectedCheckpoint}/pretrained_model`;
+    console.log(selectedPolicyFullPath);
 }
 </script>
 

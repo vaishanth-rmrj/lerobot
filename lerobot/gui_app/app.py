@@ -310,7 +310,7 @@ async def get_pretrained_models_data():
 
 #### teleop api ####
 @app.post("/robot/telop/config-update")
-async def update_teleop_config(robot_config: str = Form(...), fps: int = Form(...)):
+async def update_teleop_config(fps: int = Form(...)):
 
     new_teleop_config = {
         "fps": fps,
@@ -325,7 +325,6 @@ async def update_teleop_config(robot_config: str = Form(...), fps: int = Form(..
 #### record api ####
 @app.post("/robot/record/config-update")
 async def update_record_config(
-        robot_config: str = Form(...), 
         root_dir: str = Form(...), 
         repo_id: str = Form(...), 
         tags: str = Form(...), 
@@ -344,7 +343,7 @@ async def update_record_config(
     new_record_config = {
         "root": root_dir,
         "repo_id": repo_id,
-        "tags": tags,
+        "tags": list(tags.split()),
         "fps": fps,
         "resume": resume,
         "push_to_hub": push_to_hub,
@@ -363,7 +362,6 @@ async def update_record_config(
 #### eval api ####
 @app.post("/robot/eval/config-update")
 async def update_record_config(
-        robot_config: str = Form(...), 
         policy_path: str = Form(...), 
         record_episodes: bool = Form(False),
         push_to_hub: bool = Form(False),
@@ -384,7 +382,7 @@ async def update_record_config(
         "policy_path": policy_path,
         "record_eval_episodes": record_episodes,
         "repo_id": repo_id,
-        "tags": tags,
+        "tags": list(tags.split()),
         "fps": fps,
         "push_to_hub": push_to_hub,
         "warmup_time_s": warmup_time_s,

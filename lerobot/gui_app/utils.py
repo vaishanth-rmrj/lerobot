@@ -77,7 +77,9 @@ def cache_config(config: GUIControlPipelineConfig, cache_path:str = ".cache/gui_
         dir (str, optional): dir to save cache files. Defaults to ".cache".
     """
     cache_path = Path(cache_path).resolve()
-    cache_path.parent.mkdir(parents=True, exist_ok=True)   
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    if hasattr(config.record_control, "policy"): config.record_control.policy = None 
+    if hasattr(config.eval_control, "policy"): config.eval_control.policy = None 
     draccus.dump(config, open(str(cache_path),'w'))
     logging.info(f"Config cached to: {str(cache_path)}")
 
@@ -135,11 +137,11 @@ def load_config(robot_type:str, cache_path:str = ".cache/gui_app/gui_control_pip
         cfg_robot = copy.copy(cfg.robot)
         cfg = cfg_cache
         cfg.robot = cfg_robot
-        draccus.dump(cfg, open(str(cache_path),'w'))
+        cache_config(copy.deepcopy(cfg))
     else:
         logging.info("App cache not found. Creating cache from config!!")
         # cache the config as yaml file
-        draccus.dump(cfg, open(str(cache_path),'w'))
+        cache_config(copy.deepcopy(cfg))
     return cfg
 
 def compare_update_cache_config(

@@ -341,7 +341,7 @@ def eval(
         events (_type_, optional): keyboard button press events. Defaults to None.
     """
 
-    record_control_config = convert_config_from_eval_to_record(EvalControlConfig)
+    record_control_config = convert_config_from_eval_to_record(cfg)
 
     record(
         robot,
