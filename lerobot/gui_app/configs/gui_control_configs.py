@@ -65,14 +65,6 @@ class RecordControlConfig:
     # Resume recording on an existing dataset.
     resume: bool = False
 
-    def __post_init__(self):
-        # HACK: We parse again the cli args here to get the pretrained path if there was one.
-        policy_path = parser.get_path_arg("control.policy")
-        if policy_path:
-            cli_overrides = parser.get_cli_overrides("control.policy")
-            self.policy = PreTrainedConfig.from_pretrained(policy_path, cli_overrides=cli_overrides)
-            self.policy.pretrained_path = policy_path
-
 @dataclass
 class EvalControlConfig:
     # Dataset identifier. By convention it should match '{hf_username}/{dataset_name}' (e.g. `lerobot/test`).
@@ -81,6 +73,7 @@ class EvalControlConfig:
     single_task: str = "default eval task"
     # Root directory where the dataset will be stored (e.g. 'dataset/path').
     root: str | Path | None = "data/eval_test"
+    policy_path:str | None = None
     policy: PreTrainedConfig | None = None
     # Limit the frames per second. By default, uses the policy fps.
     fps: int | None = 30
@@ -119,12 +112,9 @@ class EvalControlConfig:
     record_eval_episodes: bool = False
 
     def __post_init__(self):
-        # HACK: We parse again the cli args here to get the pretrained path if there was one.
-        policy_path = parser.get_path_arg("control.policy")
-        if policy_path:
-            cli_overrides = parser.get_cli_overrides("control.policy")
-            self.policy = PreTrainedConfig.from_pretrained(policy_path, cli_overrides=cli_overrides)
-            self.policy.pretrained_path = policy_path
+        if self.policy_path:
+            self.policy = PreTrainedConfig.from_pretrained(self.policy_path)
+            self.policy.pretrained_path = self.policy_path
 
 @dataclass
 class ReplayControlConfig:
