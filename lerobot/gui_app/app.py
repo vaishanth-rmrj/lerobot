@@ -316,9 +316,7 @@ async def update_teleop_config(robot_config: str = Form(...), fps: int = Form(..
         "fps": fps,
     }
     compare_update_cache_config(
-        prev_config = robot_controller.config.teleoperate_control, 
         new_config = new_teleop_config, 
-        new_robot_config = robot_config, 
         controller = robot_controller,
         mode="teleop",
     )
@@ -349,8 +347,6 @@ async def update_record_config(
         "tags": tags,
         "fps": fps,
         "resume": resume,
-        "local_files_only": local_files_only,
-        "run_compute_stats": run_compute_stats,
         "push_to_hub": push_to_hub,
         "episode_time_s": episode_time_s,
         "num_episodes": num_episodes,
@@ -359,9 +355,7 @@ async def update_record_config(
         "single_task": single_task,
     }
     compare_update_cache_config(
-        prev_config = robot_controller.config.record, 
         new_config = new_record_config, 
-        new_robot_config = robot_config, 
         controller = robot_controller,
         mode="record",
     )
@@ -387,7 +381,7 @@ async def update_record_config(
 
     new_eval_config = {
         "root": root_dir,
-        "pretrained_policy_path": policy_path,
+        "policy_path": policy_path,
         "record_eval_episodes": record_episodes,
         "repo_id": repo_id,
         "tags": tags,
@@ -401,9 +395,7 @@ async def update_record_config(
         "single_task": single_task,
     }
     compare_update_cache_config(
-        prev_config = robot_controller.config.eval, 
         new_config = new_eval_config, 
-        new_robot_config = robot_config, 
         controller = robot_controller,
         mode="eval",
     )

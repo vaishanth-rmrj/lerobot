@@ -3,7 +3,7 @@ from datetime import datetime
 from pathlib import Path
 import cv2 
 import numpy as np
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict, replace
 import copy
 from typing import Dict, List
 
@@ -81,7 +81,7 @@ def cache_config(config: GUIControlPipelineConfig, cache_path:str = ".cache/gui_
     draccus.dump(config, open(str(cache_path),'w'))
     logging.info(f"Config cached to: {str(cache_path)}")
 
-def check_config_change(dict_config:Dict, hydra_config:DictConfig):
+def check_config_change_asdict(new_cfg:Dict, old_cfg:Dict):
     """
     Compare a plain dictionary with a Hydra config object and return changes.
 
@@ -91,15 +91,12 @@ def check_config_change(dict_config:Dict, hydra_config:DictConfig):
 
     Returns:
         dict: A dictionary with differences found.
-    """
-    # Convert Hydra config to a plain dictionary
-    hydra_dict = OmegaConf.to_container(hydra_config, resolve=True)
-    
+    """    
     # Find differences
     differences = {}
-    for key in set(dict_config.keys()).union(hydra_dict.keys()):
-        dict_value = dict_config.get(key, None)
-        hydra_value = hydra_dict.get(key, None)
+    for key in set(new_cfg.keys()).intersection(old_cfg.keys()):
+        dict_value = new_cfg.get(key, None)
+        hydra_value = old_cfg.get(key, None)
         if dict_value != hydra_value:
             differences[key] = dict_value
     
@@ -146,9 +143,7 @@ def load_config(robot_type:str, cache_path:str = ".cache/gui_app/gui_control_pip
     return cfg
 
 def compare_update_cache_config(
-        prev_config: DictConfig, 
         new_config:Dict, 
-        new_robot_config:str, 
         controller, 
         mode:str
     ) -> None:
@@ -161,33 +156,28 @@ def compare_update_cache_config(
         controller (RobotController)
         mode (str): control mode type
     """
-    updated_attrs = check_config_change(new_config, prev_config)
-    active_threads = len(controller.running_threads)
 
-    if not controller.config.robot_cfg_file == new_robot_config:
-        logging.info("Robot configuration changed")
-        controller.config.robot_cfg_file = new_robot_config
-        if active_threads: controller.stop_threads()
-        controller.init_robot(new_robot_config)
+    if mode == "teleop":
+        cfg = controller.config.teleoperate_control
+    elif mode == "record":
+        cfg = controller.config.record_control 
+    elif mode == "eval":
+        cfg = controller.config.eval_control 
+    else:
+        logging.warning(f"Unkown config mode triggered in backend: {mode}")
+        return {"error": f"Invalid mode: {mode}"}  
+
+
+    updated_attrs = check_config_change_asdict(new_config, asdict(cfg))
 
     if len(updated_attrs.keys()) > 0:
-        if active_threads: controller.stop_threads()
 
         if mode == "teleop":
-            controller.config.teleop = OmegaConf.create(new_config)  
+            controller.config.teleoperate_control = replace(cfg, **updated_attrs) 
         elif mode == "record":
-            controller.config.record = OmegaConf.create(new_config)  
+            controller.config.record_control = replace(cfg, **updated_attrs) 
         elif mode == "eval":
-            controller.config.eval = OmegaConf.create(new_config)  
-        elif mode == "replay":
-            raise NotImplementedError("Relay Config update not implemented !!!")
-        elif mode == "calibrate":
-            raise NotImplementedError("Calibrate Config update not implemented !!!")
-        elif mode == "hg_dagger":
-            controller.config.hg_dagger = OmegaConf.create(new_config)  
-        else:
-            logging.warning(f"Unkown config mode triggered in backend: {mode}")
-            return {"error": f"Invalid mode: {mode}"}        
+            controller.config.eval_control = replace(cfg, **updated_attrs)     
 
         logging.info(f"Updated Configs: {controller.config}") 
 

@@ -24,7 +24,7 @@ class RecordControlConfig:
     # Limit the frames per second. By default, uses the policy fps.
     fps: int | None = 30
     # Number of seconds before starting data collection. It allows the robot devices to warmup and synchronize.
-    warmup_time_s: int | float = 10
+    warmup_time_s: int | float = 0
     # Number of seconds for data recording for each episode.
     episode_time_s: int | float = 60
     # Number of seconds for resetting the environment after each episode.
