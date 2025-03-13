@@ -11,8 +11,6 @@ let recordRepoID = "default/dataset";
 let recordTags = "";
 let recordFPS = 30;
 let resumeRecordToggle = false;
-let recordLocalFilesToggle = false;
-let recordRunComputeStats = true;
 let recordPushToHub = false;
 let recordEpisodeTime = 40;
 let recordNumEpisodes = 50;
@@ -40,8 +38,6 @@ onMount(async () => {
         recordTags = data.tags;
         recordFPS = data.fps;
         resumeRecordToggle = data.resume;
-        recordLocalFilesToggle = data.local_files_only;
-        recordRunComputeStats = data.run_compute_stats;
         recordPushToHub = data.push_to_hub;
         recordEpisodeTime = data.episode_time_s;
         recordNumEpisodes = data.num_episodes;
@@ -240,26 +236,6 @@ async function submitRecordConfig(event) {
                          id="resumeRecordToggle"
                          bind:checked={resumeRecordToggle}>
                   <label class="form-check-label" for="resumeRecordToggle">Resume</label>
-                </div>
-  
-                <div class="form-check form-switch" style="margin-right: 10px;">
-                  <input class="form-check-input"
-                         name="local_files_only"
-                         type="checkbox"
-                         role="switch"
-                         id="recordLocalFilesToggle"
-                         bind:checked={recordLocalFilesToggle}>
-                  <label class="form-check-label" for="recordLocalFilesToggle">Local Files Only</label>
-                </div>
-  
-                <div class="form-check form-switch mb-3">
-                  <input class="form-check-input"
-                         name="run_compute_stats"
-                         type="checkbox"
-                         role="switch"
-                         id="recordRunComputeStats"
-                         bind:checked={recordRunComputeStats}>
-                  <label class="form-check-label" for="recordRunComputeStats">Run Compute Stats</label>
                 </div>
   
                 <div class="form-check form-switch mb-3">
