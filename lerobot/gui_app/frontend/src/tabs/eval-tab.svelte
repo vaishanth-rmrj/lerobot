@@ -64,8 +64,7 @@ onMount(async () => {
         const data = await response.json();
 
         robotConfigSelect = data.robot_config;
-        evalPolicyPath = data.pretrained_policy_path;
-        console.log("evalPolicyPath", evalPolicyPath);
+        evalPolicyPath = data.policy_path;
         evalRecordEpisodes = data.record_eval_episodes;
         evalPushToHub = data.push_to_hub;
         evalRoot = data.root;

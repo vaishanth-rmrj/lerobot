@@ -26,20 +26,25 @@ onMount(async () => {
     setTimeout(async () => {
         console.log("policyPath:", policyPath);
 
-        let res = extractPolicyPathAndCheckpoint(policyPath);
-        policyRunPath = res.policyRunPath;
-        selectedCheckpoint = res.checkpointNum;
+        if (policyPath !== null) {
+            let res = extractPolicyPathAndCheckpoint(policyPath);
+            policyRunPath = res.policyRunPath;
+            selectedCheckpoint = res.checkpointNum;
+        }       
 
         try {
             const res = await fetch('/api/get-pretrained-models-info');
             if (res.ok) {
                 availabelPretrainedmodels = await res.json();
                 availabelPretrainedmodels = availabelPretrainedmodels?.sort();
-                availabelPretrainedmodels.forEach(model => {
-                    if (model.date+"/"+model.run_name === policyRunPath) {
-                        availableCheckpoints = model.checkpoints?.sort();
-                    }
-                });
+
+                if (policyPath !== null) {
+                    availabelPretrainedmodels.forEach(model => {
+                        if (model.date+"/"+model.run_name === policyRunPath) {
+                            availableCheckpoints = model.checkpoints?.sort();
+                        }
+                    });
+                }
             } else {
                 console.error('Error fetching availabel pretrained models:', res.statusText);
             }
@@ -79,8 +84,8 @@ function handleCheckpointChange(event) {
 
     <select id="model-select" class="form-select"  onchange={handleModelChange}>
         {#each availabelPretrainedmodels as model}
-        <option value={model.dir_path} selected={model.date+"/"+model.run_name === policyRunPath}>
-            {model.date} | {model.run_name} 
+        <option value={model.dir_path} selected={model.run_name === policyRunPath}>
+            {model.run_name} 
         </option>
         {/each}
     </select>

@@ -46,15 +46,15 @@ app.mount(
 templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), 'static', 'frontend'))
 
 #### common api ####
-# @app.get("/", response_class=HTMLResponse)
-# async def read_control_panel(request: Request):
-#     return templates.TemplateResponse("index.html", {"request": request})
+@app.get("/", response_class=HTMLResponse)
+async def read_control_panel(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request})
     
 @app.get("/robot/configs-path")
 async def get_robot_config_files_path():
 
     with open((Path(__file__).parent / "configs" / "default_robot_type.yaml").resolve(), "r") as f:
-        config = yaml.load(f)
+        config = yaml.safe_load(f)
         if 'available_robot_types' in config:
             available_robot_types = config['available_robot_types']
         else:
@@ -439,8 +439,8 @@ def run_web_app():
     
     robot_controller = RobotController(config=cfg)   
     
-    # signal.signal(signal.SIGINT, handle_interrupt)
-    # uvicorn.run(app, host="0.0.0.0", port=8000, timeout_keep_alive=2)
+    signal.signal(signal.SIGINT, handle_interrupt)
+    uvicorn.run(app, host="0.0.0.0", port=8000, timeout_keep_alive=2)
 
 if __name__ == "__main__":   
     run_web_app()

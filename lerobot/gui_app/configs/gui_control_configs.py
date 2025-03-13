@@ -63,7 +63,7 @@ class EvalControlConfig:
     single_task: str = "default eval task"
     # Root directory where the dataset will be stored (e.g. 'dataset/path').
     root: str | Path | None = "data/eval_test"
-    policy_path:str | None = None
+    policy_path:str | None = ""
     policy: PreTrainedConfig | None = None
     # Limit the frames per second. By default, uses the policy fps.
     fps: int | None = 30
