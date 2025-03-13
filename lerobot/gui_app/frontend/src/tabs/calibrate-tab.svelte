@@ -5,23 +5,6 @@ import { onMount } from 'svelte';
 let arms = [];
 let cameras = [];
 
-
-// API call to calibrate a specific arm
-async function calibrateArm(arm_name) {
-    try {
-    const response = await fetch(`/robot/calibrate/${arm_name}`, {
-        method: 'GET'
-    });
-    if (response.ok) {
-        console.log(`Successfully calibrated ${arm_name}`);
-    } else {
-        console.error(`Failed to calibrate ${arm_name}`);
-    }
-    } catch (error) {
-    console.error('Error during calibration:', error);
-    }
-}
-
 // Fetch arms and cameras when the component mounts
 onMount(async () => {
     // Fetch available arm names
@@ -58,20 +41,22 @@ onMount(async () => {
             <li class="list-group-item p-3" style="background-color: var(--bs-gray-800)!important">
               <div class="d-flex justify-content-between align-items-center">
                 <strong>{arm}</strong>
-                <button type="button"
-                        class="btn btn-warning btn-sm"
-                        on:click={() => calibrateArm(arm)}>
-                  Calibrate
-                </button>
               </div>
             </li>
           {/each}
         {/if}
       </ul>
       <div class="card-body">
-        <small class="form-text">
-          Calibration runs on a different thread and cannot be terminated from the app.
-          Try not to interrupt while arm calibration (App may crash!!).
+        <small class="form-text mb-4">
+          Run calibration using the following CLI Command:
+        </small>
+        <small class="form-text">          
+          {@html `<pre><code>python lerobot/scripts/control_robot.py \\
+            --robot.type=so100 \\
+            --robot.cameras='{}' \\
+            --control.type=calibrate \\
+            --control.arms='["main_follower"]'
+          </code></pre>`}        
         </small>
       </div>
     </div>
