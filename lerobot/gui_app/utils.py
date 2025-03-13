@@ -246,7 +246,7 @@ def init_image_buffers(img_size:tuple, cam_info:Dict, display_text:str="No feed!
         img=np.zeros((h, w, 3), dtype=np.uint8), text=str(display_text), org=(w // 2 - 70, h // 2),
         fontFace=cv2.FONT_HERSHEY_SIMPLEX, fontScale=1.0, color=(0, 0, 255), thickness=2, lineType=cv2.LINE_AA
     )    
-    image_buffers = { f"observation.images.{info['name']}": cv2.imencode('.jpg', no_feed_img) for info in cam_info}
+    image_buffers = { f"observation.images.{info['name']}": cv2.imencode('.jpg', no_feed_img)[1] for info in cam_info}
     return image_buffers
 
 def reinit_event_flags(events:Dict) -> None:
