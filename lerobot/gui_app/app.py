@@ -3,19 +3,20 @@ from pathlib import Path
 import signal
 import logging
 import asyncio
+import yaml
 from typing import Dict, List, Optional
 
 from omegaconf import OmegaConf
 
 from fastapi import FastAPI, Form, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import StreamingResponse, RedirectResponse, HTMLResponse
+from fastapi.responses import StreamingResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 import urllib.parse
 import uvicorn
 
 # project imports
-from lerobot.gui_app.robot_control import RobotControl
+from lerobot.gui_app.robot_control import RobotController
 from lerobot.common.robot_devices.cameras.opencv import find_cameras
 from lerobot.common.robot_devices.control_utils import busy_wait
 from lerobot.gui_app.utils import (
@@ -44,15 +45,22 @@ app.mount(
 templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), 'static', 'frontend'))
 
 #### common api ####
-@app.get("/", response_class=HTMLResponse)
-async def read_control_panel(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+# @app.get("/", response_class=HTMLResponse)
+# async def read_control_panel(request: Request):
+#     return templates.TemplateResponse("index.html", {"request": request})
     
 @app.get("/robot/configs-path")
 async def get_robot_config_files_path():
-    configs_dir = (Path(__file__).resolve().parent / ".." / "configs/robot").resolve()
-    sliced_config_dir = "/".join(configs_dir.parts[-3:])
-    return [f"{sliced_config_dir}/{file.name}" for file in configs_dir.iterdir() if file.is_file()]
+
+    with open((Path(__file__).parent / "configs" / "default_robot_type.yaml").resolve(), "r") as f:
+        config = yaml.load(f)
+        if 'available_robot_types' in config:
+            available_robot_types = config['available_robot_types']
+        else:
+            logging.warning("No available_robot_types found in the config file.")
+            available_robot_types = []
+    
+    return available_robot_types
 
 @app.get("/robot/cameras")
 async def get_cameras():
@@ -427,13 +435,20 @@ def run_web_app():
     global robot_controller, log_list_handler
     # init logging and capture the custom list handler
     log_list_handler = init_logging()   
+
+    with open((Path(__file__).parent / "configs" / "default_robot_type.yaml").resolve(), "r") as f:
+        config = yaml.safe_load(f)
+        if 'default_robot_type' in config:
+            default_robot_type = config['default_robot_type']
+        else:
+            raise ValueError("No default_robot_type set.")
     # load config / cache
-    cfg = load_config()     
+    cfg = load_config(robot_type=default_robot_type)     
     
-    robot_controller = RobotControl(config=cfg)   
+    robot_controller = RobotController(config=cfg)   
     
-    signal.signal(signal.SIGINT, handle_interrupt)
-    uvicorn.run(app, host="0.0.0.0", port=8000, timeout_keep_alive=2)
+    # signal.signal(signal.SIGINT, handle_interrupt)
+    # uvicorn.run(app, host="0.0.0.0", port=8000, timeout_keep_alive=2)
 
 if __name__ == "__main__":   
     run_web_app()
