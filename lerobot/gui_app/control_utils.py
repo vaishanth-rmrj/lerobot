@@ -1,6 +1,7 @@
 import time
 import logging
 import cv2
+import torch
 from pathlib import Path
 from typing import Dict
 
@@ -44,12 +45,19 @@ def update_robot_state(robot_state:RobotState, observation:Dict, action:Dict, fp
         if not ret: logging.info(f"Control Loop: Error encoding cam:{key} feed")
     
     robot_state.camera_fps = fps
-    robot_state.state = observation["observation.state"]           
-    robot_state.action = action["action"]   
+    if isinstance(observation["observation.state"], torch.Tensor):
+        robot_state.state = observation["observation.state"].tolist()  
+    else:
+        robot_state.state = observation["observation.state"]   
+
+    if isinstance(action["action"], torch.Tensor):        
+        robot_state.action = action["action"].tolist()  
+    else:
+        robot_state.action = action["action"] 
 
 def reset_camera_image_buffers(robot_state:RobotState) -> None:
-    img_size = robot_state.camera_image_buffers[robot_state.camera_image_buffers.keys()[0]].shape
-    cam_info = {"name":name.split(".")[-1] for name in robot_state.camera_image_buffers.keys()}
+    img_size = robot_state.camera_image_buffers["img_size"]
+    cam_info = [{"name":name.split(".")[-1]} for name in robot_state.camera_image_buffers.keys() if "image" in name]
     robot_state.camera_image_buffers = init_image_buffers(img_size, cam_info)
 
 def check_force_stop(events):
