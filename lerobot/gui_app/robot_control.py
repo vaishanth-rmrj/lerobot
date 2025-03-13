@@ -15,15 +15,6 @@ from lerobot.common.robot_devices.control_utils import busy_wait
 from lerobot.common.robot_devices.robots.utils import Robot, make_robot_from_config
 from lerobot.common.datasets.lerobot_dataset import LeRobotDataset
 from lerobot.common.robot_devices.utils import safe_disconnect
-from lerobot.common.robot_devices.control_utils import (
-    has_method,
-    init_keyboard_listener,
-    init_policy,
-    sanity_check_dataset_name,
-    sanity_check_dataset_robot_compatibility,
-    stop_recording,
-    predict_action,
-)
 from lerobot.gui_app.configs.gui_control_configs import GUIControlPipelineConfig
 from lerobot.common.robot_devices.robots.configs import RobotConfig
 from lerobot.gui_app.utils import init_image_buffers
@@ -33,29 +24,14 @@ from lerobot.gui_app.control_utils import (
     eval,
 )
 from lerobot.gui_app.configs.gui_control_configs import (
-    CalibrateControlConfig,
     GUIControlPipelineConfig,
     RecordControlConfig,
     EvalControlConfig,
     ReplayControlConfig,
     TeleoperateControlConfig,
 )
+from lerobot.gui_app.utils import reinit_event_flags, RobotState
 
-def reinit_event_flags(events:Dict) -> None:
-    events["force_stop"] = False
-    events["start_recording"] = False
-    events["control_loop_active"] = False
-    events["exit_early"] = False
-    events["rerecord_episode"] = False
-    events["stop_recording"] = False
-
-@dataclass
-class RobotState:
-    type:str
-    camera_image_buffers: Dict[str, np.ndarray]
-    camera_fps: float
-    state: List[float]
-    action: List[float]
 
 class RobotController:
     def __init__(

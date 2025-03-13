@@ -14,25 +14,17 @@ from lerobot.common.policies.factory import make_policy
 from lerobot.common.robot_devices.control_utils import (
     predict_action,
     control_loop,
-    init_keyboard_listener,
-    log_control_info,
-    record_episode,
-    reset_environment,
     sanity_check_dataset_name,
     sanity_check_dataset_robot_compatibility,
     stop_recording,
-    warmup_record,
 )
 
-from lerobot.gui_app.robot_control import reinit_event_flags, RobotState
+from lerobot.gui_app.utils import reinit_event_flags, RobotState
 from lerobot.gui_app.utils import init_image_buffers
 from lerobot.gui_app.configs.gui_control_configs import (
-    CalibrateControlConfig,
-    GUIControlPipelineConfig,
     RecordControlConfig,
     EvalControlConfig,
     ReplayControlConfig,
-    TeleoperateControlConfig,
 )
 
 def update_robot_state(robot_state:RobotState, observation:Dict, action:Dict, fps:float) -> None:
